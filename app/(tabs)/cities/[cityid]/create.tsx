@@ -1,6 +1,7 @@
 import { useCreateSpot } from "@/hooks/useCreateSpot";
-import { tagsApi } from "@/lib/supabase/tags";
-import { NewSpot } from "@/types";
+import { useCreateTag } from "@/hooks/useCreateTag";
+import { tagsSpotsApi } from "@/lib/supabase/tags_spots";
+import { NewSpot, NewSpotTag, NewTag } from "@/types";
 import { CreateSpotRouteParams } from "@/types/navigators";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -10,7 +11,8 @@ import { Alert, Button, SafeAreaView, StyleSheet, Text, TextInput, View } from "
 const CreateSpot = () => {
   const router = useRouter();
   const { cityid } = useLocalSearchParams<CreateSpotRouteParams>();
-  const { mutate, isPending } = useCreateSpot(cityid);
+  const { mutateAsync } = useCreateSpot(cityid);
+  const {mutateAsync: mutateAsyncTags} = useCreateTag()
 
 
   const [name, setName] = useState("");
@@ -19,7 +21,8 @@ const CreateSpot = () => {
   const [notes, setNotes] = useState("");
 
   const handleTags = async (tagList: string[]) => {
-      return await tagsApi.createTags(tagList);
+    const newTags: NewTag[] = tagList.map((tag) => ({label: tag}))
+    return await mutateAsyncTags(newTags);
   }
 
   const handleSubmit = async () => {
@@ -35,9 +38,7 @@ const CreateSpot = () => {
 
     // Create tags in the database if needed (assuming spotsApi.createTags returns created tags)
     // let createdTags: Tag[] = [];
-    // if (tagList.length > 0) {
-    //   createdTags = await handleTags(tagList);
-    // }
+    
 
     // 2. Create the spot
     const newSpot: NewSpot = {  
@@ -46,12 +47,19 @@ const CreateSpot = () => {
       city_id: parseInt(cityid as string),
     };
 
-    mutate(newSpot);
+    const createdSpot = await mutateAsync(newSpot);
+    console.log("Created Spot:", createdSpot);
 
+    if (tagList.length > 0) {
+       handleTags(tagList).then(async (createdTags) => {
+        const spotTagLinks = createdTags.map(tag => ({
+          spot_id: createdSpot.id,
+          tag_id: tag.id,
+        }));  
+        await tagsSpotsApi.createTagsSpots(spotTagLinks as NewSpotTag[]);
+      })
+    }
 
-
-    // 3. Insert into spot_tags join table
-    
     setName("");
     setType("");
     setTags("");

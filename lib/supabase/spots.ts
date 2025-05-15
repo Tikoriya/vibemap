@@ -25,13 +25,13 @@ export const spotsApi = {
         return data as Spot;
     },
 
-    createSpot: async (spot: NewSpot): Promise<Spot[]> => {
-        console.log("CREATING SPOT", spot);
+    createSpot: async (spot: NewSpot): Promise<Spot> => {
         const { data, error } = await supabase
         .from("spots")
         .insert([spot])
+        .select()
+        .single()
 
-        console.log("CREATED SPOT", data);
         if (error) throw error;
         return data || [];
     },

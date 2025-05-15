@@ -1,44 +1,36 @@
-import { Tag } from "@/types";
+import { NewTag, Tag } from "@/types";
 import { supabase } from "@/utils/supabase";
 
 
 export const tagsApi = {
-  // Create multiple tags, returns the created tag objects
-  async createTags(tagNames: string[]): Promise<Tag[]> {
-    if (tagNames.length === 0) return [];
-    // Remove duplicates
-    const uniqueNames = Array.from(new Set(tagNames));
+    fetchTags: async (): Promise<Tag[]> => {
+        const { data, error } = await supabase
+            .from("tags")
+            .select("*")
+            .order("created_at", { ascending: false });
 
-    console.log("Creating tags:", uniqueNames);
+        if (error) throw error;
+        return data || [];
+    },
 
-    // Insert tags, ignoring duplicates (if your table has unique constraint on name)
-    const { data, error } = await supabase
-      .from("tags")
-      .upsert(
-        uniqueNames.map((label) => ({ label})),
-        { onConflict: "label" }
-      )
-      .select();
+    createTags: async (tags: NewTag[]): Promise<Tag[]> => {
+      console.log("CREATING TAGS", tags);
+        const { data, error } = await supabase
+            .from("tags")
+            .upsert([...tags], { onConflict: "label" })
+            .select()
 
-    if (error) {
-      console.error("Error creating tags:", error);
-      return [];
+        if (error) throw error;
+        return data || [];
+    },
+
+    getTag: async (tagId: number): Promise<Tag | null>  => {
+        const { data, error } = await supabase
+            .from("tags")
+            .select("*")
+            .eq("id", tagId)
+            .single();
+        if (error) return null;
+        return data as Tag;
     }
-    return data as Tag[];
-  },
-
-  // Get tags by names
-  async getTagsByNames(tagNames: string[]): Promise<Tag[]> {
-    if (tagNames.length === 0) return [];
-    const { data, error } = await supabase
-      .from("tags")
-      .select("*")
-      .in("label", tagNames);
-
-    if (error) {
-      console.error("Error fetching tags:", error);
-      return [];
-    }
-    return data as Tag[];
-  },
 };

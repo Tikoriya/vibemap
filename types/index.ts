@@ -7,4 +7,5 @@ export type Tag = Database['public']['Tables']['tags']['Row'];
 export type NewCity = Database['public']['Tables']['cities']['Insert'];
 export type NewSpot = Database['public']['Tables']['spots']['Insert'];
 export type NewTag = Database['public']['Tables']['tags']['Insert'];
+export type NewSpotTag = Database['public']['Tables']['spot_tags']['Insert'];
 
