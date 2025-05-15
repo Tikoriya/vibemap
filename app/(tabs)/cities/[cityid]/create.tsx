@@ -1,37 +1,62 @@
-import { Spot } from "@/types";
-import { CityStackParamList } from "@/types/navigators";
-import { useRoute } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useCreateSpot } from "@/hooks/useCreateSpot";
+import { tagsApi } from "@/lib/supabase/tags";
+import { NewSpot } from "@/types";
+import { CreateSpotRouteParams } from "@/types/navigators";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Button, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Button, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
 
-type CreateScreenNavigationProp = NativeStackNavigationProp<CityStackParamList, "create">;
 
 const CreateSpot = () => {
+  const router = useRouter();
+  const { cityid } = useLocalSearchParams<CreateSpotRouteParams>();
+  const { mutate, isPending } = useCreateSpot(cityid);
+
+
   const [name, setName] = useState("");
   const [type, setType] = useState("");
   const [tags, setTags] = useState("");
   const [notes, setNotes] = useState("");
-  const route = useRoute();
-  // const { spots, addSpot } = useSpotStore();
-  const {spots, addSpot, onSubmit } = route.params as CityStackParamList["create"];
 
-  const handleSubmit = () => {
-    if (!name || !type) return;
-    const newSpot: Spot = {
-      id: (spots?.length + 1).toString(),
+  const handleTags = async (tagList: string[]) => {
+      return await tagsApi.createTags(tagList);
+  }
+
+  const handleSubmit = async () => {
+    if (!name) {
+      Alert.alert("Please fill in all required fields.");
+      return;
+    }
+
+    const tagList = tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+    // Create tags in the database if needed (assuming spotsApi.createTags returns created tags)
+    // let createdTags: Tag[] = [];
+    // if (tagList.length > 0) {
+    //   createdTags = await handleTags(tagList);
+    // }
+
+    // 2. Create the spot
+    const newSpot: NewSpot = {  
       name,
-      type,
-      tags: tags.split(",").map(tag => tag.trim()).filter(Boolean),
       notes,
-      city: "Lisbon", // or make this dynamic if needed
+      city_id: parseInt(cityid as string),
     };
-    addSpot(newSpot);
+
+    mutate(newSpot);
+
+
+
+    // 3. Insert into spot_tags join table
+    
     setName("");
     setType("");
     setTags("");
     setNotes("");
-    onSubmit();
+    router.back();
   };
 
   return (

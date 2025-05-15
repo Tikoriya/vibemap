@@ -1,43 +1,34 @@
-import { useSpotStore } from "@/lib/store";
-import { CityStackParamList } from "@/types/navigators";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useMemo, useState } from "react";
-import { Button, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useCity } from "@/hooks/useCity";
+import { CityRoutePrams } from "@/types/navigators";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Button, FlatList, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 
 export default function CityScreen() {
-  const { spots, addSpot } = useSpotStore();
+  const { cityid, cityName } = useLocalSearchParams<CityRoutePrams>();
+  const router = useRouter();
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const navigation = useNavigation<NativeStackNavigationProp<CityStackParamList>>();
+  const { city, isLoading, spots } = useCity(cityid);
   
-  // Get all unique tags from spots
-  const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    spots.forEach(spot => spot.tags.forEach(tag => tagSet.add(tag)));
-    return Array.from(tagSet);
-  }, [spots]);
+  // Load city and spots using the custom hook
+  useEffect(() => {
+    console.log("City ID:", city);
+  }, [city]);
 
-  // Filter spots by selected tag
-  const filteredSpots = selectedTag
-    ? spots.filter(spot => spot.tags.includes(selectedTag))
-    : spots;
+  if (isLoading) return <Text>Loading...</Text>;
+  
 
   return (
     <SafeAreaView>
       <View>
-        <Text>Lisbon</Text>
-         <Button
+        <Text style={styles.title}>{cityName}</Text>
+        <Button
           title="Add Spot"
-          onPress={() =>
-            navigation.navigate("create", {
-              spots,
-              addSpot,
-              onSubmit: () => navigation.goBack(),
-            })
-          }
+          onPress={() => router.push({ pathname: "/cities/[cityid]/create", params: { cityid } })}
         />
-        <FlatList
+        {/* <FlatList
           data={allTags}
           keyExtractor={(item) => item}
           horizontal
@@ -60,28 +51,27 @@ export default function CityScreen() {
               </Text>
             </TouchableOpacity>
           )}
-        />
-       
+        /> */}
         <FlatList
-          data={filteredSpots}
-          keyExtractor={(item) => item.id}
+          data={spots}
+          keyExtractor={(item) => item.id.toString()}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
           renderItem={({ item }) => (
-            <View style={styles.spotCard} key={item.name}>
+            <View style={styles.spotCard} key={item.id}>
               <Text style={styles.spotName}>{item.name}</Text>
-              <Text style={styles.spotType}>{item.type}</Text>
-              <Text style={styles.spotTags}>{item.tags.join(", ")}</Text>
+              <Text style={styles.spotTags}>{Array.isArray((item as any).tags) ? (item as any).tags.join(", ") : ""}</Text>
             </View>
           )}
         />
       </View>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-tagsContainer: {
+  title: { fontSize: 24, fontWeight: "bold", margin: 16 },
+  tagsContainer: {
     paddingVertical: 8,
     paddingHorizontal: 8,
   },
@@ -105,7 +95,6 @@ tagsContainer: {
   tagTextSelected: {
     color: "#fff",
   },
-
   listContainer: {
     paddingVertical: 16,
     paddingHorizontal: 8,
