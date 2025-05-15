@@ -14,7 +14,6 @@ export const tagsApi = {
     },
 
     createTags: async (tags: NewTag[]): Promise<Tag[]> => {
-      console.log("CREATING TAGS", tags);
         const { data, error } = await supabase
             .from("tags")
             .upsert([...tags], { onConflict: "label" })

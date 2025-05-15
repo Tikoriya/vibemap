@@ -35,23 +35,19 @@ const CreateSpot = () => {
       .split(",")
       .map((tag) => tag.trim())
       .filter(Boolean);
-
-    // Create tags in the database if needed (assuming spotsApi.createTags returns created tags)
-    // let createdTags: Tag[] = [];
     
-
     // 2. Create the spot
     const newSpot: NewSpot = {  
       name,
       notes,
       city_id: parseInt(cityid as string),
     };
-
     const createdSpot = await mutateAsync(newSpot);
-    console.log("Created Spot:", createdSpot);
 
+    //3. Create the tags
     if (tagList.length > 0) {
        handleTags(tagList).then(async (createdTags) => {
+        // 4. Create the links between the spot and tags
         const spotTagLinks = createdTags.map(tag => ({
           spot_id: createdSpot.id,
           tag_id: tag.id,

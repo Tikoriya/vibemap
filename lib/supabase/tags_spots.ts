@@ -14,7 +14,6 @@ export const tagsSpotsApi = {
     },
 
     createTagsSpots: async (spotTagLinks: NewSpotTag[]): Promise<NewSpotTag[]> => {
-        console.log("CREATING TAGS SPOTS", spotTagLinks);
         const { data, error } = await supabase
             .from("spot_tags")
             .upsert(spotTagLinks, {onConflict: 'spot_id, tag_id' })

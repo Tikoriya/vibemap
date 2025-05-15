@@ -8,9 +8,7 @@ export const useCreateTag = () => {
         mutationFn:  tagsApi.createTags,
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['tags'] });
-            console.log("Tags created successfully:", data);
             return data;
-
         },
         onError: (error) => {
             console.error("Error creating tag:", error);
