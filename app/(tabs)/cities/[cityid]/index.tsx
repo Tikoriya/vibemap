@@ -1,36 +1,84 @@
 import { useCity } from "@/hooks/useCity";
+import { useSpot } from "@/hooks/useSpot";
+import { useTags } from "@/hooks/useTags";
+import { Tag } from "@/types";
 import { CityRoutePrams } from "@/types/navigators";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Button, FlatList, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Button, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 
 export default function CityScreen() {
-  const { cityid, cityName } = useLocalSearchParams<CityRoutePrams>();
   const router = useRouter();
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const { city, isLoading, spots } = useCity(cityid);
+  const { cityid, cityName } = useLocalSearchParams<CityRoutePrams>();
+  const { isLoading, spots, deleteCity } = useCity(cityid);
+  const { deleteSpot } = useSpot(cityid);
+  const { tags: allTags } = useTags()
+  
+  // Change to array for multiple selection
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
   
   // Load city and spots using the custom hook
-  useEffect(() => {
-    console.log("City ID:", city);
-  }, [city]);
-
   if (isLoading) return <Text>Loading...</Text>;
+
+  // Toggle tag selection
+  const toggleTag = (tagId: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId]
+    );
+  };
   
+  // Filter spots by any selected tag
+  const filteredSpots =
+    selectedTags.length > 0
+      ? spots?.filter(
+          (spot) =>
+            Array.isArray(spot.tags) &&
+            spot.tags.some((tag: any) =>
+              selectedTags.includes(tag.id?.toString())
+            )
+        )
+      : spots;
+
+  const handleDeleteSpot = async (spotId: number) => {
+    await deleteSpot(spotId);
+    // Optionally, refetch or update the list if your hook doesn't do it automatically
+  };
+
+  const handleDeleteCity = async () => {
+    await deleteCity(parseInt(cityid));
+    router.push("/cities");
+  }
+
+  const renderTags = (tags?: Tag[]) => {
+    if (!tags || tags.length === 0) return null;
+    const tagsStr = tags.map((t: Tag) => t.label).join(", ")
+    return (
+      <Text style={styles.spotTags}>
+        {tagsStr}
+      </Text>
+    )
+  }
 
   return (
     <SafeAreaView>
       <View>
+        <Button
+          title="Delete City"
+          onPress={handleDeleteCity}
+        />
         <Text style={styles.title}>{cityName}</Text>
         <Button
           title="Add Spot"
           onPress={() => router.push({ pathname: "/cities/[cityid]/create", params: { cityid } })}
         />
-        {/* <FlatList
+        <FlatList
           data={allTags}
-          keyExtractor={(item) => item}
+          keyExtractor={(item) => item.id.toString()}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tagsContainer}
@@ -39,28 +87,36 @@ export default function CityScreen() {
             <TouchableOpacity
               style={[
                 styles.tagButton,
-                selectedTag === item && styles.tagButtonSelected,
+                selectedTags.includes(item.id.toString()) && styles.tagButtonSelected,
               ]}
-              onPress={() => setSelectedTag(selectedTag === item ? null : item)}
+              onPress={() => toggleTag(item.id.toString())}
             >
-              <Text style={[
-                styles.tagText,
-                selectedTag === item && styles.tagTextSelected,
-              ]}>
-                {item}
+              <Text
+                style={[
+                  styles.tagText,
+                  selectedTags.includes(item.id.toString()) && styles.tagTextSelected,
+                ]}
+              >
+                {item.label}
               </Text>
             </TouchableOpacity>
           )}
-        /> */}
+        />
         <FlatList
-          data={spots}
+          data={filteredSpots}
           keyExtractor={(item) => item.id.toString()}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
           renderItem={({ item }) => (
-            <View style={styles.spotCard} key={item.id}>
-              <Text style={styles.spotName}>{item.name}</Text>
-              <Text style={styles.spotTags}>{Array.isArray((item as any).tags) ? (item as any).tags.join(", ") : ""}</Text>
+           <View style={styles.spotCard} key={item.id}>
+              <View style={styles.spotCardHeader}>
+                <Text style={styles.spotName}>{item.name}</Text>
+                <TouchableOpacity onPress={() => handleDeleteSpot(item.id)} style={styles.closeButton}>
+                  <Text style={styles.closeButtonText}>×</Text>
+                </TouchableOpacity>
+              </View>
+              {renderTags(item.tags)}
+              
             </View>
           )}
         />
@@ -70,6 +126,25 @@ export default function CityScreen() {
 }
 
 const styles = StyleSheet.create({
+  // ...existing styles...
+  spotCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  closeButton: {
+    marginLeft: "auto",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    alignItems: "flex-end",
+  },
+  closeButtonText: {
+    color: "red",
+    fontWeight: "bold",
+    fontSize: 22,
+  },
+  // ...rest of your styles...
   title: { fontSize: 24, fontWeight: "bold", margin: 16 },
   tagsContainer: {
     paddingVertical: 8,

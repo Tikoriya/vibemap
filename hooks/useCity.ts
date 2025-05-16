@@ -1,11 +1,9 @@
-import { useCityStore } from "@/lib/store";
 import citiesApi from "@/lib/supabase/citites";
 import { spotsApi } from "@/lib/supabase/spots";
 import { City, Spot } from "@/types";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function useCity(cityId: string) {
-  const { currentCity, setCurrentCity } = useCityStore();
   const cityIdInt = parseInt(cityId);
   const queryClient = useQueryClient();
   // Load city and its spots
@@ -29,6 +27,15 @@ export function useCity(cityId: string) {
     enabled: !!cityId,
     retry: 1,
    })
+
+   const {mutateAsync: mutateDeleteCity, isPending: isPendingDeleteCity} = useMutation({
+    mutationFn: async (deleteId: number) => {
+      return await citiesApi.deleteCity(deleteId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cities"] });
+    },
+  });
     
     return {
         city: data,
@@ -38,5 +45,6 @@ export function useCity(cityId: string) {
         spots: citySpots,
         isLoadingSpots,
         spotsError,
+        deleteCity: mutateDeleteCity,
     };
 }

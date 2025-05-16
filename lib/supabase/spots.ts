@@ -47,5 +47,16 @@ export const spotsApi = {
         );
         if (error) throw error;
     },
+    deleteSpot: async (spotId: number): Promise<Spot> => {
+        const { data, error } = await supabase
+        .from("spots")
+        .delete()
+        .eq("id", spotId)
+        .select()
+        .single()
+
+        if (error) throw error;
+        return data || [];
+    }
   // ...other spot API methods
 };

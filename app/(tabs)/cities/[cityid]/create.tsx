@@ -1,5 +1,5 @@
-import { useCreateSpot } from "@/hooks/useCreateSpot";
 import { useCreateTag } from "@/hooks/useCreateTag";
+import { useSpot } from "@/hooks/useSpot";
 import { tagsSpotsApi } from "@/lib/supabase/tags_spots";
 import { NewSpot, NewSpotTag, NewTag } from "@/types";
 import { CreateSpotRouteParams } from "@/types/navigators";
@@ -11,7 +11,7 @@ import { Alert, Button, SafeAreaView, StyleSheet, Text, TextInput, View } from "
 const CreateSpot = () => {
   const router = useRouter();
   const { cityid } = useLocalSearchParams<CreateSpotRouteParams>();
-  const { mutateAsync } = useCreateSpot(cityid);
+  const { createSpot } = useSpot(cityid);
   const {mutateAsync: mutateAsyncTags} = useCreateTag()
 
 
@@ -42,7 +42,7 @@ const CreateSpot = () => {
       notes,
       city_id: parseInt(cityid as string),
     };
-    const createdSpot = await mutateAsync(newSpot);
+    const createdSpot = await createSpot(newSpot);
 
     //3. Create the tags
     if (tagList.length > 0) {

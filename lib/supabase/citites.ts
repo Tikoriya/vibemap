@@ -30,7 +30,17 @@ const citiesApi = {
         .single();
       if (error) return null;
       return data as City;
-    }
-}
+  },
 
+  deleteCity: async (cityId: number): Promise<City> => {
+    const { data, error } = await supabase
+      .from("cities")
+      .delete()
+      .eq("id", cityId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data || [];
+  }
+}
 export default citiesApi;
