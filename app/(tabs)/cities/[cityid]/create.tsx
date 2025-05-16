@@ -1,5 +1,6 @@
 import { useCreateTag } from "@/hooks/useCreateTag";
 import { useSpot } from "@/hooks/useSpot";
+import { useAuthStore } from "@/lib/store";
 import { tagsSpotsApi } from "@/lib/supabase/tags_spots";
 import { NewSpot, NewSpotTag, NewTag } from "@/types";
 import { CreateSpotRouteParams } from "@/types/navigators";
@@ -12,6 +13,7 @@ const CreateSpot = () => {
   const router = useRouter();
   const { cityid } = useLocalSearchParams<CreateSpotRouteParams>();
   const { createSpot } = useSpot(cityid);
+  const { user } = useAuthStore()
   const {mutateAsync: mutateAsyncTags} = useCreateTag()
 
 
@@ -21,7 +23,7 @@ const CreateSpot = () => {
   const [notes, setNotes] = useState("");
 
   const handleTags = async (tagList: string[]) => {
-    const newTags: NewTag[] = tagList.map((tag) => ({label: tag}))
+    const newTags: NewTag[] = tagList.map((tag) => ({label: tag, user_id: user?.id}));
     return await mutateAsyncTags(newTags);
   }
 

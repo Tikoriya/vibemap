@@ -1,5 +1,6 @@
 //this is going to be create new city page
 import { useCities } from "@/hooks/useCities";
+import { useAuthStore } from "@/lib/store";
 import citiesApi from "@/lib/supabase/citites";
 import { NewCity } from "@/types";
 import { useRouter } from "expo-router";
@@ -11,6 +12,7 @@ export default function CreateCityScreen() {
   const [name, setName] = useState("");
   const router = useRouter();
   const {refetchCity} = useCities()
+  const { user } = useAuthStore()
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -19,6 +21,7 @@ export default function CreateCityScreen() {
     }
 
     const city: NewCity = {
+      user_id: user?.id,
       name: name.trim(),
       imageUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80",    
     }

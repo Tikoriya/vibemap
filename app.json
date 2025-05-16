@@ -6,6 +6,11 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "vibemap",
+    "deepLinking": true,
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
