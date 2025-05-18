@@ -1,5 +1,5 @@
 import { Redirect, Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Platform, Text } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
@@ -13,6 +13,10 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
 
     const { user, loading } = useAuthStore();
+
+    useEffect(() => {
+      console.log('User:', user);
+    }, [user])
 
     if (loading) {
       return <Text>Loading...</Text>

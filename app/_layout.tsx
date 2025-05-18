@@ -28,8 +28,6 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-       {/* {user ? <MainStack /> : <AuthStack />}
-        <StatusBar style="auto" /> */}
         <Slot />
      </ThemeProvider>
     </QueryClientProvider>

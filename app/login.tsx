@@ -10,7 +10,8 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     try {
-        await  authApi.login(email, password)
+        await authApi.login(email, password)
+        router.replace('/cities')
     }
     catch (error) {
       console.error('Login error:', error);
