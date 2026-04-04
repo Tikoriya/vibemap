@@ -1,0 +1,122 @@
+---
+description: TypeScript strictness and type conventions for VibeMap
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# TypeScript
+
+## Source of Truth for Data Types
+
+The Supabase-generated `Database` type in `types/supabase.ts` is the single source of truth for all database shapes. Derive domain types from it — never redefine them manually.
+
+```ts
+// ❌ BAD — manually redefined type that can drift from DB
+type Spot = {
+  id: string;
+  name: string;
+  city_id: string;
+};
+
+// ✅ GOOD — derived from generated types
+export type Spot = Database['public']['Tables']['spots']['Row'];
+export type NewSpot = Database['public']['Tables']['spots']['Insert'];
+export type SpotUpdate = Database['public']['Tables']['spots']['Update'];
+```
+
+## Function Signatures
+
+Always type function parameters. Always type the return value of non-trivial functions (anything beyond a one-liner arrow). React components are exempt — let inference handle `JSX.Element`.
+
+```ts
+// ❌ BAD
+const createSpot = async (data) => { ... }
+
+// ✅ GOOD
+const createSpot = async (data: NewSpot): Promise<Spot> => { ... }
+```
+
+## No `any`
+
+Never use `any`. Alternatives:
+- `unknown` + narrow with a type guard when the shape is truly unknown
+- The correct Supabase-derived type when working with DB data
+- A generic parameter when the type should be flexible
+
+```ts
+// ❌ BAD
+const handleResponse = (data: any) => data.name;
+
+// ✅ GOOD
+const handleResponse = (data: Spot) => data.name;
+```
+
+## No Non-Null Assertions
+
+Avoid the `!` operator. Handle the null/undefined case explicitly.
+
+```ts
+// ❌ BAD
+const name = user!.name;
+
+// ✅ GOOD
+if (!user) return null;
+const name = user.name;
+```
+
+## No Type Assertions Unless Necessary
+
+Avoid `as SomeType` unless working with a third-party library that returns untyped data. Never use `as any` under any circumstances.
+
+```ts
+// ❌ BAD
+const spot = data as Spot;
+
+// ✅ GOOD — trust the typed Supabase query return
+const { data: spot, error } = await supabase
+  .from('spots')
+  .select('*')
+  .eq('id', id)
+  .single();
+```
+
+## Union Types Over Enums
+
+Prefer string union types. They are simpler, tree-shakeable, and work naturally with Supabase string columns.
+
+```ts
+// ❌ BAD
+enum Plan { Free = 'free', Pro = 'pro' }
+
+// ✅ GOOD
+type Plan = 'free' | 'pro';
+```
+
+## Optional vs Required
+
+Be deliberate — don't make everything optional as a shortcut. A prop or field is optional only if the feature genuinely works without it.
+
+```ts
+// ❌ BAD — lazy optionals
+type SpotCardProps = {
+  spot?: Spot;
+  onPress?: () => void;
+};
+
+// ✅ GOOD
+type SpotCardProps = {
+  spot: Spot;
+  onPress: (spotId: string) => void;
+  showTags?: boolean; // genuinely optional — has a sensible default
+};
+```
+
+## Generics for Reusable Utilities
+
+Use generics when a utility works across multiple types rather than duplicating logic.
+
+```ts
+// ✅ GOOD
+const groupById = <T extends { id: string }>(items: T[]): Record<string, T> =>
+  Object.fromEntries(items.map(item => [item.id, item]));
+```

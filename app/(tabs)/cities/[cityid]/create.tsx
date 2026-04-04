@@ -1,3 +1,4 @@
+import { GoogleAutoComplete } from "@/components/GoogleAutoComplete";
 import { useCreateTag } from "@/hooks/useCreateTag";
 import { useSpot } from "@/hooks/useSpot";
 import { useAuthStore } from "@/lib/store";
@@ -6,7 +7,7 @@ import { NewSpot, NewSpotTag, NewTag } from "@/types";
 import { CreateSpotRouteParams } from "@/types/navigators";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, Button, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 
 
 const CreateSpot = () => {
@@ -65,9 +66,24 @@ const CreateSpot = () => {
     router.back();
   };
 
+  const onSearchError = React.useCallback((error: any) => {
+  console.log(error);
+}, []);
+
+const onPlaceSelected = React.useCallback((place: any) => {
+  console.log(place);
+}, []);
+const [isFocused, setIsFocused] = useState(false);
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View>
+    <View style={{flex: 1}}>
+      <View style={{flex: 1, alignItems: "center", justifyContent: "center"}}>
+        <GoogleAutoComplete />
+      </View>
+    </View>
+  
+  //     />
+      /* <View>
         <Text style={styles.label}>Name</Text>
         <TextInput
           style={styles.input}
@@ -97,15 +113,58 @@ const CreateSpot = () => {
           placeholder="Notes"
         />
         <Button title="Add Spot" onPress={handleSubmit} />
-      </View>
-    </SafeAreaView>
+      </View> */
+    // </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 16 },
-  label: { marginTop: 12, marginBottom: 4, fontWeight: "bold" },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 4, padding: 8 },
+   container: {
+    backgroundColor: "darkblue",
+    paddingTop: 60,
+    paddingBottom: 25,
+    alignItems: "center",
+    borderBottomLeftRadius: 55,
+    borderBottomRightRadius: 55,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+    marginBottom: 50,
+  },
+  googlePlacesText: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    height: 50,
+    borderRadius: 25,
+    paddingLeft: 25,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  inputContainer: {
+    width: "95%",
+  },
+  textInputFocused: {
+    borderWidth: 1,
+    borderColor: "darkblue",
+    height: 50,
+    borderRadius: 25,
+    paddingLeft: 25,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
 });
 
 export default CreateSpot;

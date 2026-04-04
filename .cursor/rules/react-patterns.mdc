@@ -1,0 +1,103 @@
+---
+description: React Native component patterns and architecture for VibeMap
+globs: **/*.tsx
+alwaysApply: false
+---
+
+# React Patterns
+
+## Component Structure
+
+Functional components only. Props always destructured in the function signature.
+
+```tsx
+// ❌ BAD
+function SpotCard(props: SpotCardProps) {
+  return <Text>{props.spot.name}</Text>;
+}
+
+// ✅ GOOD
+export const SpotCard = ({ spot, onPress }: SpotCardProps) => (
+  <TouchableOpacity onPress={() => onPress(spot.id)}>
+    <Text>{spot.name}</Text>
+  </TouchableOpacity>
+);
+```
+
+## Exports
+
+- Route screens (`app/**/*.tsx`): `export default function ScreenName()`
+- Shared components and hooks: named exports (`export const`, `export function`)
+- API modules (`lib/supabase/*.ts`): named exports only — no default exports
+
+## Separate Logic from UI
+
+Components render. Hooks compute. API modules fetch.
+
+- A component must not contain data fetching, business logic, or direct Supabase calls
+- Extract any non-trivial logic into a custom hook in `hooks/`
+- Hooks must not import from `components/`
+
+```tsx
+// ❌ BAD — logic inside component
+export default function CityScreen() {
+  const [spots, setSpots] = useState([]);
+  useEffect(() => {
+    supabase.from('spots').select('*').then(({ data }) => setSpots(data));
+  }, []);
+}
+
+// ✅ GOOD — component only renders
+export default function CityScreen() {
+  const { spots, isLoading } = useSpots(cityId);
+  if (isLoading) return <LoadingState />;
+  return <SpotList spots={spots} />;
+}
+```
+
+## File Size
+
+Keep files lean. If a screen file is growing large, extract:
+- Repeated JSX blocks → sub-components in the same file or `components/`
+- Any `useState` + related logic → a custom hook
+
+## Styles
+
+`StyleSheet.create({})` at the bottom of every component file. Never inline styles except for truly one-off dynamic values (e.g. `{ width: progress * 100 }`). Style keys in camelCase, grouped logically (container first, then children).
+
+```tsx
+// ❌ BAD
+<View style={{ flex: 1, padding: 16, backgroundColor: '#fff' }}>
+
+// ✅ GOOD
+<View style={styles.container}>
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 16, backgroundColor: Colors.light.background },
+});
+```
+
+## State Management
+
+Use the right tool for each type of state — never put state in the wrong layer.
+
+| State type | Tool |
+|---|---|
+| Server data (spots, cities, tags) | React Query (`useQuery`, `useMutation`) |
+| Global client state (auth session, user) | Zustand (`useAuthStore`) |
+| Local UI state (modal open, selected tab, input focus) | `useState` |
+| Form field values and validation | react-hook-form + Zod |
+
+Do not put server data in Zustand. Do not put UI state in React Query. Do not use `useState` for data that comes from Supabase.
+
+## Business Layer Separation
+
+```
+screens (app/)          → render only, call hooks
+hooks/                  → React Query, state, derived data
+lib/supabase/*.ts       → Supabase API calls, returns typed data
+lib/services/*.ts       → third-party APIs (Google Places, Unsplash)
+lib/analytics.ts        → PostHog event calls
+```
+
+Nothing in `app/` or `components/` imports directly from `utils/supabase.ts`. All data access goes through `lib/supabase/` or `lib/services/`.

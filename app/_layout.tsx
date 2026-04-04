@@ -2,6 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Slot } from 'expo-router';
+import 'react-native-get-random-values';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';

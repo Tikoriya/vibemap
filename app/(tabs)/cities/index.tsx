@@ -28,6 +28,7 @@ export default function CitiesScreen() {
           contentContainerStyle={styles.listContent}
         />
       </View>
+      
     </SafeAreaView>
   );
 }

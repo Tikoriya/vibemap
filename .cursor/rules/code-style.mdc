@@ -1,0 +1,51 @@
+---
+description: TypeScript and general code style conventions for VibeMap
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Code Style
+
+## Imports
+
+Always use destructured imports. Group in this order, separated by a blank line: external packages → `react` / `react-native` → `expo-*` → `@/` aliases. Single quotes throughout.
+
+```ts
+// ❌ BAD
+import React from 'react'
+import * as RN from 'react-native'
+
+// ✅ GOOD
+import { useState } from 'react';
+import { StyleSheet, View, Text } from 'react-native';
+
+import { useRouter } from 'expo-router';
+
+import { useSpot } from '@/hooks/useSpot';
+import { Spot } from '@/types';
+```
+
+## Naming
+
+- Variables and functions: descriptive camelCase. No single-letter names except loop indices. No abbreviations that lose meaning (`usr`, `cfg`, `idx` are fine; `s`, `x`, `tmp` are not).
+- Boolean variables: prefix with `is`, `has`, or `can` (`isLoading`, `hasPhoto`, `canEdit`).
+- Event handlers: prefix with `handle` (`handleSave`, `handleTagPress`).
+- Constants: SCREAMING_SNAKE_CASE only for true module-level constants (`MAX_TAG_COUNT`). Local constants use camelCase.
+
+```ts
+// ❌ BAD
+const s = spots.filter(x => x.c === id);
+const fn = () => doThing();
+
+// ✅ GOOD
+const citySpots = spots.filter(spot => spot.cityId === cityId);
+const handleDelete = () => deleteSpot(spotId);
+```
+
+## Async
+
+Always `async/await`. Never mix `.then()` chains with `await` in the same function.
+
+## Error Handling
+
+See `error-handling.mdc` for full rules. The short version: every error must reach the user. `console.error` alone is never acceptable in finished code.

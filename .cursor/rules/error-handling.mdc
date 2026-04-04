@@ -1,0 +1,151 @@
+---
+description: Error handling conventions for VibeMap — React Native, React Query, Supabase
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Error Handling
+
+## Never Swallow Errors
+
+Empty or silent catch blocks are forbidden. Every caught error must either be re-thrown, logged to Sentry, or surfaced to the user — usually all three.
+
+```ts
+// ❌ BAD
+try {
+  await deleteSpot(spotId);
+} catch (error) {
+  console.error(error);
+}
+
+// ✅ GOOD
+try {
+  await deleteSpot(spotId);
+} catch (error) {
+  Sentry.captureException(error);
+  showToast('Could not delete spot. Please try again.');
+}
+```
+
+## Always Pair Loading with Error
+
+Every piece of UI that shows a loading state must also handle the error state. Never render a loading spinner with no error fallback.
+
+```tsx
+// ❌ BAD
+const { data: spots, isLoading } = useSpots(cityId);
+if (isLoading) return <LoadingSpinner />;
+return <SpotList spots={spots} />;
+
+// ✅ GOOD
+const { data: spots, isLoading, error } = useSpots(cityId);
+if (isLoading) return <LoadingSpinner />;
+if (error) return <ErrorState message="Could not load spots." onRetry={refetch} />;
+return <SpotList spots={spots} />;
+```
+
+## React Query Mutations
+
+Mutations must define `onError`. The error must reach the user, not just the console.
+
+```ts
+// ❌ BAD
+const mutation = useMutation({ mutationFn: createSpot });
+
+// ✅ GOOD
+const mutation = useMutation({
+  mutationFn: createSpot,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['spots', cityId] });
+    router.back();
+  },
+  onError: (error) => {
+    Sentry.captureException(error);
+    showToast('Could not save spot. Please try again.');
+  },
+});
+```
+
+## Supabase API Layer
+
+Check and throw on every Supabase response. Never let `error` be silently ignored. Return typed data only on success.
+
+```ts
+// ❌ BAD
+const { data } = await supabase.from('spots').select('*');
+return data;
+
+// ✅ GOOD
+const { data, error } = await supabase.from('spots').select('*');
+if (error) throw error;
+return data;
+```
+
+## Two Types of Errors — Handle Them Differently
+
+**User errors** (validation, empty fields, bad input) — handled by `react-hook-form` + Zod inline. Do not log to Sentry.
+**System errors** (network, Supabase failure, timeout) — log to Sentry and show a toast via `react-native-toast-message`. Never expose raw error messages or stack traces to the user.
+
+```tsx
+import Toast from 'react-native-toast-message';
+
+// ✅ GOOD — validation error (react-hook-form handles inline, no Sentry)
+// Zod schema catches this before submission
+
+// ✅ GOOD — system error (Sentry + toast)
+} catch (error) {
+  Sentry.captureException(error, { extra: { action: 'createSpot' } });
+  Toast.show({ type: 'error', text1: 'Could not save spot', text2: 'Please try again.' });
+}
+```
+
+## Async Functions Must Be Fully Handled
+
+Every `async` function called from a component or event handler must have its errors caught. Unhandled promise rejections crash silently on some platforms.
+
+```tsx
+// ❌ BAD
+<Button onPress={() => handleSave()} />
+
+// ✅ GOOD — handleSave is async and has its own try/catch
+const handleSave = async () => {
+  try {
+    await saveSpot(formData);
+    router.back();
+  } catch (error) {
+    Sentry.captureException(error, { extra: { action: 'saveSpot' } });
+    Toast.show({ type: 'error', text1: 'Could not save', text2: 'Please try again.' });
+  }
+};
+```
+
+## Error Boundaries
+
+Wrap each major screen section in a React error boundary to prevent a rendering crash from taking down the whole app. A single root-level boundary in `app/_layout.tsx` is the minimum — add screen-level boundaries for complex screens.
+
+## Sentry Usage
+
+Log to Sentry for all system errors. Add context so the error is actionable in the dashboard.
+
+```ts
+// ✅ GOOD — context makes the error traceable
+Sentry.captureException(error, {
+  extra: { spotId, cityId, action: 'createSpot' },
+});
+```
+
+Never log to Sentry for validation failures, empty states, or user cancellations.
+
+## Toast Usage
+
+Use `react-native-toast-message` (`Toast.show`) for all system-level user feedback. Validation errors are shown inline by react-hook-form — do not use a toast for them.
+
+```ts
+// Success
+Toast.show({ type: 'success', text1: 'Spot saved' });
+
+// Error
+Toast.show({ type: 'error', text1: 'Could not save spot', text2: 'Please try again.' });
+```
+
+`<Toast />` is mounted once in `app/_layout.tsx` — do not mount it per-screen.

@@ -1,0 +1,35 @@
+---
+description: Development workflow — how changes are communicated and executed
+alwaysApply: true
+---
+
+# Workflow
+
+## Before Changing a File
+
+Before editing any file, give a one or two sentence explanation of what will change and why. Then proceed. The user reviews changes via the file diff and will raise concerns if needed.
+
+## Step by Step
+
+Make changes in logical units — one feature, one bug fix, one refactor at a time. Do not change multiple unrelated files in a single pass without explaining the connection.
+
+## Comments in Code
+
+Do not add comments that describe what the code is doing line by line. Only add a comment when the *why* is non-obvious — a workaround, a constraint, a non-trivial decision. Never comment every property or every step of a function.
+
+```tsx
+// ❌ BAD
+const [isLoading, setIsLoading] = useState(false); // loading state
+
+// ✅ GOOD (only when context is genuinely needed)
+// Supabase free tier rate-limits autocomplete to 10 req/s — debounce prevents 429s
+const debouncedSearch = useDebounce(search, 300);
+```
+
+## Linting and Formatting
+
+ESLint and Prettier are configured to enforce the code style rules in this project programmatically. Do not bypass or disable lint rules with `// eslint-disable` comments. If a rule fires incorrectly, fix the config — do not suppress it per-line.
+
+## No Proactive Refactoring
+
+Only change what is needed for the current task. Do not clean up unrelated files, rename things speculatively, or restructure code outside the scope of what was asked.

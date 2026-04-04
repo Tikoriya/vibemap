@@ -1,0 +1,96 @@
+---
+description: Form handling with react-hook-form and Zod for VibeMap
+globs: **/*.tsx
+alwaysApply: false
+---
+
+# Forms
+
+## Stack
+
+All forms use **react-hook-form** for state and submission, and **Zod** for schema validation. No form uses raw `useState` for field values.
+
+- Zod schemas live in `lib/schemas/` (e.g. `lib/schemas/spot.ts`, `lib/schemas/city.ts`)
+- One schema per entity, reused across create and edit forms
+- Use `zodResolver` from `@hookform/resolvers/zod` to connect the schema to the form
+
+## Schema Definition
+
+```ts
+// lib/schemas/spot.ts
+import { z } from 'zod';
+
+export const spotSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  notes: z.string().optional(),
+  address: z.string().min(1, 'Address is required'),
+  latitude: z.number(),
+  longitude: z.number(),
+});
+
+export type SpotFormValues = z.infer<typeof spotSchema>;
+```
+
+## Form Setup in Component
+
+```tsx
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { spotSchema, SpotFormValues } from '@/lib/schemas/spot';
+
+const { control, handleSubmit, formState: { errors, isSubmitting } } = useForm<SpotFormValues>({
+  resolver: zodResolver(spotSchema),
+  defaultValues: { name: '', notes: '', address: '' },
+});
+```
+
+## Field Pattern
+
+Use `Controller` for all React Native inputs (they are uncontrolled by default).
+
+```tsx
+<Controller
+  control={control}
+  name="name"
+  render={({ field: { onChange, onBlur, value } }) => (
+    <TextInput
+      value={value}
+      onChangeText={onChange}
+      onBlur={onBlur}
+      placeholder="Spot name"
+    />
+  )}
+/>
+{errors.name && <Text style={styles.errorText}>{errors.name.message}</Text>}
+```
+
+## Submission
+
+Pass `handleSubmit` to the submit button. The mutation lives in the hook, not the component.
+
+```tsx
+const onSubmit = async (values: SpotFormValues) => {
+  await createSpot.mutateAsync(values);
+};
+
+<Button onPress={handleSubmit(onSubmit)} disabled={isSubmitting} />
+```
+
+## Edit Forms
+
+Pre-populate using `defaultValues` from the existing entity. Use the same Zod schema as the create form.
+
+```tsx
+useForm<SpotFormValues>({
+  resolver: zodResolver(spotSchema),
+  defaultValues: {
+    name: spot.name,
+    notes: spot.notes ?? '',
+    address: spot.address ?? '',
+  },
+});
+```
+
+## Inline Errors
+
+Validation errors from Zod are shown inline beneath the field as small text in the error color (`Colors.error`). Never use a toast for validation errors.
