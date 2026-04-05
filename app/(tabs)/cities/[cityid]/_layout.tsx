@@ -4,7 +4,7 @@ export default function CityStackLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" options={{ headerShown: false, title: "City" }} />
-      <Stack.Screen name="spot/create" options={{ title: "Create Spot" }} />
+      <Stack.Screen name="create" options={{ title: "Create Spot" }} />
     </Stack>
   );
 }

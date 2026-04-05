@@ -1,4 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_600SemiBold,
+  DMSans_700Bold,
+} from "@expo-google-fonts/dm-sans";
 import { useFonts } from "expo-font";
 import * as Linking from "expo-linking";
 import { Slot } from "expo-router";
@@ -14,7 +20,10 @@ const queryClient = new QueryClient();
 
 export default function RootLayout() {
   const [loaded] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+    DMSans_700Bold,
   });
 
   useEffect(() => {

@@ -1,31 +1,31 @@
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { authApi } from '@/lib/supabase/auth';
-import { useAuthStore } from '@/lib/store';
+import { Colors } from "@/constants/Colors";
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { useAuthStore } from "@/lib/store";
+import { authApi } from "@/lib/supabase/auth";
 
 export default function ProfileScreen() {
   const { user } = useAuthStore();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === "dark";
+  const theme = isDark ? Colors.dark : Colors.light;
 
-  const initial = user?.email?.[0]?.toUpperCase() ?? '?';
+  const initial = user?.email?.[0]?.toUpperCase() ?? "?";
   const displayName = user?.user_metadata?.full_name as string | undefined;
-  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
 
   const handleLogout = () => {
-    Alert.alert('Log out', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert("Log out", "Are you sure?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: 'Log out',
-        style: 'destructive',
+        text: "Log out",
+        style: "destructive",
         onPress: async () => {
           try {
             await authApi.logout();
           } catch (error) {
             console.error(error);
-            Alert.alert('Error', 'Could not log out. Please try again.');
+            Alert.alert("Error", "Could not log out. Please try again.");
           }
         },
       },
@@ -36,17 +36,30 @@ export default function ProfileScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: theme.accentSubtle }]}>
-          <Text style={[styles.avatarInitial, { color: theme.accent }]}>{initial}</Text>
+          <Text style={[styles.avatarInitial, { color: theme.accent }]}>
+            {initial}
+          </Text>
         </View>
         {displayName ? (
-          <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
+          <Text style={[styles.name, { color: theme.text }]}>
+            {displayName}
+          </Text>
         ) : null}
-        <Text style={[styles.email, { color: theme.textSecondary }]}>{user?.email}</Text>
+        <Text style={[styles.email, { color: theme.textSecondary }]}>
+          {user?.email}
+        </Text>
       </View>
 
-      <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <View
+        style={[
+          styles.section,
+          { backgroundColor: theme.surface, borderColor: theme.border },
+        ]}
+      >
         <View style={[styles.row, { borderColor: theme.border }]}>
-          <Text style={[styles.rowLabel, { color: theme.textSecondary }]}>Plan</Text>
+          <Text style={[styles.rowLabel, { color: theme.textSecondary }]}>
+            Plan
+          </Text>
           <Text style={[styles.rowValue, { color: theme.text }]}>Free</Text>
         </View>
       </View>
@@ -69,24 +82,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 40,
   },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 16,
   },
   avatarInitial: {
     fontSize: 32,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   name: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 4,
   },
   email: {
@@ -96,12 +109,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     marginBottom: 24,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
@@ -110,17 +123,17 @@ const styles = StyleSheet.create({
   },
   rowValue: {
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   logoutButton: {
     borderWidth: 1,
     borderRadius: 16,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   logoutText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#C4572A',
+    fontWeight: "600",
+    color: "#C4572A",
   },
 });

@@ -11,7 +11,8 @@ import { useAuthStore } from '@/lib/store';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { user, loading } = useAuthStore();
-  const theme = Colors[colorScheme ?? 'light'];
+  const isDark = colorScheme === 'dark';
+  const theme = isDark ? Colors.dark : Colors.light;
 
   if (loading) {
     return null;
@@ -43,9 +44,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="map"
         options={{
-          href: null,
+          title: 'Map',
+          tabBarIcon: ({ color }) => <IconSymbol size={26} name="location.fill" color={color} />,
         }}
       />
       <Tabs.Screen

@@ -1,35 +1,38 @@
 import { City, NewCity } from "@/types";
 import { supabase } from "../../utils/supabase";
 
+type CityWithSpots = City & { spots?: { id: number }[] };
+
 const citiesApi = {
-  fetchCities: async (): Promise<City[]> => {
-  console.log("FETCHING CITIES");
-  const { data, error } = await supabase
-    .from('cities')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data || [];
-
-},
-  createCity: async (city: NewCity): Promise<City[]> => {
+  fetchCities: async (): Promise<CityWithSpots[]> => {
     const { data, error } = await supabase
       .from('cities')
-      .insert([city]);
+      .select('*, spots(id)')
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data as CityWithSpots[]) || [];
   },
 
-  getCity: async (cityId: number): Promise<City | null>  => {
-      const { data, error } = await supabase
-        .from("cities")
-        .select("*")
-        .eq("id", cityId)
-        .single();
-      if (error) return null;
-      return data as City;
+  createCity: async (city: NewCity): Promise<City> => {
+    const { data, error } = await supabase
+      .from('cities')
+      .insert([city])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as City;
+  },
+
+  getCity: async (cityId: number): Promise<City | null> => {
+    const { data, error } = await supabase
+      .from("cities")
+      .select("*")
+      .eq("id", cityId)
+      .single();
+    if (error) return null;
+    return data as City;
   },
 
   deleteCity: async (cityId: number): Promise<City> => {
@@ -40,7 +43,8 @@ const citiesApi = {
       .select()
       .single();
     if (error) throw error;
-    return data || [];
-  }
-}
+    return data as City;
+  },
+};
+
 export default citiesApi;

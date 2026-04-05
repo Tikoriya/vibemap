@@ -9,3 +9,5 @@ export type NewSpot = Database['public']['Tables']['spots']['Insert'];
 export type NewTag = Database['public']['Tables']['tags']['Insert'];
 export type NewSpotTag = Database['public']['Tables']['spot_tags']['Insert'];
 
+export type CityWithCount = City & { spotCount: number };
+

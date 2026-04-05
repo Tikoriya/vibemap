@@ -8,7 +8,7 @@ alwaysApply: false
 
 ## Component Structure
 
-Functional components only. Props always destructured in the function signature.
+Functional components only. Accept props as a typed parameter and destructure inside the function body with `const`. Default values are set in the destructuring.
 
 ```tsx
 // ❌ BAD
@@ -16,12 +16,22 @@ function SpotCard(props: SpotCardProps) {
   return <Text>{props.spot.name}</Text>;
 }
 
-// ✅ GOOD
+// ❌ BAD — destructured in signature
 export const SpotCard = ({ spot, onPress }: SpotCardProps) => (
   <TouchableOpacity onPress={() => onPress(spot.id)}>
     <Text>{spot.name}</Text>
   </TouchableOpacity>
 );
+
+// ✅ GOOD
+export const SpotCard = (props: SpotCardProps) => {
+  const { spot, onPress } = props;
+  return (
+    <TouchableOpacity onPress={() => onPress(spot.id)}>
+      <Text>{spot.name}</Text>
+    </TouchableOpacity>
+  );
+};
 ```
 
 ## Exports
