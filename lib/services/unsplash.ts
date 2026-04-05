@@ -13,7 +13,10 @@ export type UnsplashPhoto = {
 };
 
 export const unsplashService = {
-  searchCityPhoto: async (query: string, page = 1): Promise<UnsplashPhoto | null> => {
+  searchCityPhoto: async (
+    query: string,
+    page = 1,
+  ): Promise<UnsplashPhoto | null> => {
     if (!UNSPLASH_ACCESS_KEY) return null;
 
     try {

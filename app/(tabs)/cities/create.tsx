@@ -40,10 +40,10 @@ function gradientForName(name: string): [string, string] {
 export default function CreateCityScreen() {
   const [name, setName] = useState("");
   const [suggestedPhotoUrl, setSuggestedPhotoUrl] = useState<string | null>(null);
+  const [photoPage, setPhotoPage] = useState(1);
   const [userPhotoUri, setUserPhotoUri] = useState<string | null>(null);
   const [isFetchingPhoto, setIsFetchingPhoto] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [photoPage, setPhotoPage] = useState(1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const router = useRouter();
@@ -69,14 +69,12 @@ export default function CreateCityScreen() {
   const handleNameChange = useCallback((text: string) => {
     setName(text);
     setUserPhotoUri(null);
+    setSuggestedPhotoUrl(null);
     setPhotoPage(1);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (text.trim().length < 2) {
-      setSuggestedPhotoUrl(null);
-      return;
-    }
+    if (text.trim().length < 2) return;
 
     debounceRef.current = setTimeout(() => fetchPhoto(text.trim(), 1), 600);
   }, [fetchPhoto]);
@@ -167,7 +165,6 @@ export default function CreateCityScreen() {
 
         {/* Photo actions */}
         <View style={styles.photoActions}>
-          {/* "Try another" only shows when Unsplash has loaded a suggestion */}
           {suggestedPhotoUrl !== null && userPhotoUri === null && (
             <TouchableOpacity
               onPress={handleTryAnother}

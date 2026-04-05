@@ -6,9 +6,9 @@ type CityWithSpots = City & { spots?: { id: number }[] };
 const citiesApi = {
   fetchCities: async (): Promise<CityWithSpots[]> => {
     const { data, error } = await supabase
-      .from('cities')
-      .select('*, spots(id)')
-      .order('created_at', { ascending: false });
+      .from("cities")
+      .select("*, spots(id)")
+      .order("created_at", { ascending: false });
 
     if (error) throw error;
     return (data as CityWithSpots[]) || [];
@@ -16,12 +16,15 @@ const citiesApi = {
 
   createCity: async (city: NewCity): Promise<City> => {
     const { data, error } = await supabase
-      .from('cities')
+      .from("cities")
       .insert([city])
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error creating city:", error);
+      throw error;
+    }
     return data as City;
   },
 

@@ -95,6 +95,19 @@ export default function AuthScreen() {
     setPassword("");
   };
 
+  const handleDevLogin = async () => {
+    try {
+      setIsLoading(true);
+      await authApi.signInWithPassword("vlazzarova@yahoo.bg", "Viki1234");
+      router.replace("/(tabs)/cities");
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Dev login failed", "Check credentials or Supabase connection.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -222,6 +235,17 @@ export default function AuthScreen() {
             <Text style={styles.backText}>Try a different method</Text>
           </TouchableOpacity>
         </View>
+      )}
+
+      {__DEV__ && (
+        <TouchableOpacity
+          style={[styles.devButton, isLoading && styles.buttonDisabled]}
+          onPress={handleDevLogin}
+          disabled={isLoading}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.devButtonText}>DEV  —  Quick login</Text>
+        </TouchableOpacity>
       )}
     </KeyboardAvoidingView>
   );
@@ -381,5 +405,22 @@ const styles = StyleSheet.create({
   sentEmail: {
     color: "#1A1714",
     fontWeight: "600",
+  },
+  devButton: {
+    position: "absolute",
+    bottom: 48,
+    alignSelf: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: "#C4703A",
+  },
+  devButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#C4703A",
+    letterSpacing: 0.5,
   },
 });
