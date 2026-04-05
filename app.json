@@ -7,10 +7,10 @@
     "icon": "./assets/images/icon.png",
     "scheme": "vibemap",
     "deepLinking": true,
-    "platforms": [
-      "ios",
-      "android"
-    ],
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "platforms": ["ios", "android"],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -38,7 +38,17 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.REPLACE_WITH_YOUR_IOS_CLIENT_ID"
+        }
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,36 +1,54 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useFonts } from 'expo-font';
-import { Slot } from 'expo-router';
-import 'react-native-get-random-values';
-import 'react-native-reanimated';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useFonts } from "expo-font";
+import * as Linking from "expo-linking";
+import { Slot } from "expo-router";
+import { useEffect } from "react";
+import "react-native-get-random-values";
+import "react-native-reanimated";
+import Toast from "react-native-toast-message";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { initAuth } from '@/utils/initAuth';
-import { useEffect } from 'react';
+import { initAuth } from "@/utils/initAuth";
+import { supabase } from "@/utils/supabase";
+
 const queryClient = new QueryClient();
 
-
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   useEffect(() => {
     initAuth();
   }, []);
-  
+
+  useEffect(() => {
+    const handleDeepLink = async (url: string) => {
+      const { queryParams } = Linking.parse(url);
+      const code = queryParams?.code;
+      if (typeof code === "string") {
+        await supabase.auth.exchangeCodeForSession(code);
+      }
+    };
+
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink(url);
+    });
+
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      handleDeepLink(url);
+    });
+
+    return () => subscription.remove();
+  }, []);
+
   if (!loaded) {
-    // Async font loading only occurs in development.
     return null;
   }
 
   return (
     <QueryClientProvider client={queryClient}>
-     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Slot />
-     </ThemeProvider>
+      <Slot />
+      <Toast />
     </QueryClientProvider>
   );
 }
