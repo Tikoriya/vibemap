@@ -8,31 +8,43 @@ export const useSpot = (cityId: string) => {
     const {data: createdSpotData, mutateAsync: mutateCreateSpot , isPending: isPendingCreateSpot} = useMutation({
         mutationFn: spotsApi.createSpot,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['spots', cityId] });
+            void queryClient.invalidateQueries({ queryKey: ['spots', cityId] });
+            void queryClient.invalidateQueries({ queryKey: ['cities'] });
         },
         onError: (error) => {
             console.error("Error creating spot:", error);
         },
     });
 
-    const {data: deleteSpotdata, mutateAsync: mutateDeleteSpot, isPending: isPendingDeleteSpot} = useMutation({
+    const { mutateAsync: mutateDeleteSpot, isPending: isPendingDeleteSpot } = useMutation({
         mutationFn: spotsApi.deleteSpot,
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['spots', cityId] });
+            void queryClient.invalidateQueries({ queryKey: ['spots', cityId] });
+            void queryClient.invalidateQueries({ queryKey: ['cities'] });
         },
         onError: (error) => {
             console.error("Error deleting spot:", error);
         },
-    })
-  
-    //delete a spot
+    });
+
+    const { mutateAsync: mutateUpdateSpot, isPending: isPendingUpdateSpot } = useMutation({
+        mutationFn: spotsApi.updateSpot,
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['spots', cityId] });
+        },
+        onError: (error) => {
+            console.error("Error updating spot:", error);
+        },
+    });
+
     return {
         createSpot: mutateCreateSpot,
         isPendingCreateSpot,
         createdSpotData,
         deleteSpot: mutateDeleteSpot,
         isPendingDeleteSpot,
-        deleteSpotdata,
+        updateSpot: mutateUpdateSpot,
+        isPendingUpdateSpot,
     }
 }
 

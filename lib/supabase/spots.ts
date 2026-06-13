@@ -4,7 +4,6 @@ import { supabase } from "@/utils/supabase";
 export const spotsApi = {
 
     fetchSpots: async (cityId: number): Promise<Spot[]> => {
-        console.log("FETCHING SPOTS");
         const { data, error } = await supabase
         .from("spots")
         .select("*, tags:tags(*)")
@@ -18,7 +17,7 @@ export const spotsApi = {
     getSpot: async (spotId: number): Promise<Spot | null> => {
         const { data, error } = await supabase
         .from("spots")
-        .select("*")
+        .select("*, tags:tags(*)")
         .eq("id", spotId)
         .single();
         if (error) return null;
@@ -47,6 +46,18 @@ export const spotsApi = {
         );
         if (error) throw error;
     },
+    updateSpot: async ({ spotId, updates }: { spotId: number; updates: Partial<Omit<Spot, 'id' | 'created_at'>> }): Promise<Spot> => {
+        const { data, error } = await supabase
+        .from("spots")
+        .update(updates)
+        .eq("id", spotId)
+        .select()
+        .single();
+
+        if (error) throw error;
+        return data;
+    },
+
     deleteSpot: async (spotId: number): Promise<Spot> => {
         const { data, error } = await supabase
         .from("spots")

@@ -4,6 +4,58 @@
 
 ---
 
+## Quick Start
+
+### 1. Restore Supabase (if inactive)
+
+Supabase free tier pauses after 7 days of inactivity.
+
+1. Go to [supabase.com/dashboard](https://supabase.com/dashboard)
+2. Open the **VibeMap** project
+3. Click **Restore project** — takes ~2 minutes
+4. Confirm tables are visible: `cities`, `spots`, `tags`, `spot_tags`
+
+### 1b. Run pending migrations
+
+If the `spots` table is missing the location columns, run this in the Supabase **SQL Editor**:
+
+```sql
+ALTER TABLE spots
+  ADD COLUMN IF NOT EXISTS address TEXT,
+  ADD COLUMN IF NOT EXISTS latitude FLOAT8,
+  ADD COLUMN IF NOT EXISTS longitude FLOAT8;
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Start the dev server
+
+```bash
+npx expo start
+```
+
+Then press `i` for iOS simulator or `a` for Android emulator.
+
+### 4. Log in
+
+On the login screen, tap **DEV — Quick login** (only visible in dev mode) to sign in instantly with the test account.
+
+### API Keys (already in source)
+
+All keys are hardcoded directly in the source for now — no `.env` setup required:
+
+| Key                       | File                       |
+| ------------------------- | -------------------------- |
+| Supabase URL + public key | `utils/supabase.ts`        |
+| Unsplash Access Key       | `lib/services/unsplash.ts` |
+| Google Places API Key     | `lib/services/google.ts`   |
+
+---
+
 ## What is VibeMap?
 
 VibeMap is a mobile app for saving the places that matter to you — not just the address, but the feeling. Bars with great cocktails. Coffee shops where you can actually work. Restaurants worth the hype. Hidden gems you stumbled onto. Any spot you want to remember and find again.
@@ -33,12 +85,15 @@ VibeMap solves both: a beautiful, organized personal database of places, tagged 
 ## Core Concepts
 
 ### Cities
+
 A city is the top-level organizer. You create a city (e.g. Dubai, Lisbon, New York), give it a cover photo, and all your saved spots live inside it. When you visit a city, you open it and immediately see everything you have saved there, filterable by vibe.
 
 ### Spots
+
 A spot is a saved place inside a city. It has a name, photo, address, notes, and tags. Spots are created either manually (search via Google Places), by pasting a link (Google Maps, a website), or by sharing directly from Instagram or TikTok.
 
 ### Tags
+
 Tags describe the vibe of a spot. There are predefined categories (Cocktails, Coffee, Fancy, Work-friendly, Brunch, Nightlife, Casual, Nature, etc.) and users can add their own custom tags. Tags are color-coded by category so filters are visual and fast to scan.
 
 ---
@@ -48,18 +103,21 @@ Tags describe the vibe of a spot. There are predefined categories (Cocktails, Co
 ### Phase 1 — Core MVP
 
 **Authentication**
+
 - Sign in with Apple
 - Sign in with Google
 - Magic link via email (no password required)
 - Persistent session — users stay logged in until they log out or delete the app
 
 **Cities**
+
 - Create a city with a name, country, and cover photo
 - Cover photo auto-suggested from Unsplash when a city name is typed; user can replace with their own photo
 - City list displayed as a 2-column image card grid
 - Edit and delete cities
 
 **Spots**
+
 - Create a spot using Google Places autocomplete — selecting a result auto-fills name, address, latitude/longitude
 - Add a cover photo (from camera roll or camera)
 - Add personal notes
@@ -69,12 +127,14 @@ Tags describe the vibe of a spot. There are predefined categories (Cocktails, Co
 - Spot detail screen with image, address, tags, notes, website, phone, and an "Open in Maps" button
 
 **Tags**
+
 - Predefined tag library: Cocktails, Coffee, Work-friendly, Fancy, Casual, Brunch, Nightlife, Nature, and more
 - Custom tag creation
 - Tags are color-coded by vibe category
 - Filter spots in a city by one or more tags
 
 **Profile**
+
 - Account screen with name, avatar (pulled from OAuth provider), and logout
 
 ---
@@ -82,6 +142,7 @@ Tags describe the vibe of a spot. There are predefined categories (Cocktails, Co
 ### Phase 2 — Maps
 
 **In-app map view**
+
 - Full-screen map for each city showing all spots as pins
 - Pins are color-coded by the spot's primary tag category
 - Global map tab showing all spots across all cities
@@ -91,6 +152,7 @@ Tags describe the vibe of a spot. There are predefined categories (Cocktails, Co
 - Map centers on the user's current location when opened
 
 **UI polish**
+
 - Animated bottom sheet (spring physics)
 - Card press scale feedback
 - Haptic feedback on tag selection and spot save
@@ -102,16 +164,19 @@ Tags describe the vibe of a spot. There are predefined categories (Cocktails, Co
 ### Phase 3 — Smart Import + Dark Mode
 
 **Import from a link**
+
 - Paste any URL (Google Maps link, restaurant website, etc.) into the Create Spot screen
 - The app extracts the place name, address, coordinates, website, and phone number automatically via a backend function
 - The form is pre-filled — user adds tags, picks a city, and saves
 
 **Import from Instagram, TikTok, or any app**
+
 - iOS: share directly from Instagram/TikTok/Chrome using the native iOS Share Sheet — VibeMap appears as a destination
 - Android: same via Android Share Intent
 - The shared URL is processed automatically and opens a pre-filled Create Spot form
 
 **Dark mode**
+
 - Full dark mode support, respecting the device system setting
 - Warm dark palette (`#141210` base) designed to make food and travel photography look cinematic
 
@@ -137,26 +202,26 @@ Tags describe the vibe of a spot. There are predefined categories (Cocktails, Co
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Mobile framework | React Native + Expo SDK 53 |
-| Navigation | Expo Router (file-based) |
+| Layer              | Technology                                            |
+| ------------------ | ----------------------------------------------------- |
+| Mobile framework   | React Native + Expo SDK 53                            |
+| Navigation         | Expo Router (file-based)                              |
 | Backend / database | Supabase (Postgres + Auth + Storage + Edge Functions) |
-| Server state | React Query v5 |
-| Client state | Zustand v5 |
-| Maps | react-native-maps |
-| Place search | Google Places API |
-| City images | Unsplash API |
-| Authentication | Supabase Auth (magic link, Apple, Google) |
-| Share Extension | expo-share-intent |
-| Image picker | expo-image-picker |
-| Animations | react-native-reanimated |
-| Haptics | expo-haptics |
-| Fonts | DM Sans via @expo-google-fonts/dm-sans |
-| Build | EAS Build (Expo) |
-| Product analytics | PostHog (`posthog-react-native`) |
-| Crash reporting | Sentry (`@sentry/react-native`) |
-| In-app purchases | RevenueCat (Phase 5) |
+| Server state       | React Query v5                                        |
+| Client state       | Zustand v5                                            |
+| Maps               | react-native-maps                                     |
+| Place search       | Google Places API                                     |
+| City images        | Unsplash API                                          |
+| Authentication     | Supabase Auth (magic link, Apple, Google)             |
+| Share Extension    | expo-share-intent                                     |
+| Image picker       | expo-image-picker                                     |
+| Animations         | react-native-reanimated                               |
+| Haptics            | expo-haptics                                          |
+| Fonts              | DM Sans via @expo-google-fonts/dm-sans                |
+| Build              | EAS Build (Expo)                                      |
+| Product analytics  | PostHog (`posthog-react-native`)                      |
+| Crash reporting    | Sentry (`@sentry/react-native`)                       |
+| In-app purchases   | RevenueCat (Phase 5)                                  |
 
 ---
 
@@ -166,27 +231,27 @@ Tags describe the vibe of a spot. There are predefined categories (Cocktails, Co
 
 A warm-neutral base so food and travel photography sits naturally in the UI without clashing with the chrome.
 
-| Token | Light | Dark |
-|---|---|---|
-| Background | `#F7F4F0` | `#141210` |
+| Token           | Light     | Dark      |
+| --------------- | --------- | --------- |
+| Background      | `#F7F4F0` | `#141210` |
 | Surface / cards | `#FFFFFF` | `#1F1C19` |
-| Text primary | `#1A1714` | `#F2EDE6` |
-| Text secondary | `#8C8078` | `#9E9488` |
-| Primary accent | `#C4703A` | `#D4845A` |
+| Text primary    | `#1A1714` | `#F2EDE6` |
+| Text secondary  | `#8C8078` | `#9E9488` |
+| Primary accent  | `#C4703A` | `#D4845A` |
 
 **Semantic tag colors**
 
-| Tag | Color |
-|---|---|
+| Tag                | Color     |
+| ------------------ | --------- |
 | Cocktails / Drinks | `#C4572A` |
-| Coffee | `#8B5E3C` |
-| Food / Brunch | `#D4933A` |
-| Fancy / Upscale | `#8B6FAD` |
-| Work-friendly | `#4A7C59` |
-| Casual / Chill | `#5B7FA8` |
-| Nightlife / Bars | `#2D3A5E` |
-| Nature / Outdoor | `#5A7A4A` |
-| Custom tags | `#8C8078` |
+| Coffee             | `#8B5E3C` |
+| Food / Brunch      | `#D4933A` |
+| Fancy / Upscale    | `#8B6FAD` |
+| Work-friendly      | `#4A7C59` |
+| Casual / Chill     | `#5B7FA8` |
+| Nightlife / Bars   | `#2D3A5E` |
+| Nature / Outdoor   | `#5A7A4A` |
+| Custom tags        | `#8C8078` |
 
 **Typography:** DM Sans (Google Fonts) — display 28–32px bold, screen titles 22–24px bold, card titles 16–18px semibold, body 14–15px regular, tag chips 12px medium.
 

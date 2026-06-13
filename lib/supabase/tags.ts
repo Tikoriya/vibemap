@@ -3,20 +3,21 @@ import { supabase } from "@/utils/supabase";
 
 
 export const tagsApi = {
-    fetchTags: async (): Promise<Tag[]> => {
+    fetchTags: async (userId: string): Promise<Tag[]> => {
         const { data, error } = await supabase
             .from("tags")
             .select("*")
+            .eq("user_id", userId)
             .order("created_at", { ascending: false });
 
         if (error) throw error;
         return data || [];
     },
 
-    createTags: async (tags: NewTag[]): Promise<Tag[]> => {
+    createTags: async (tags: NewTag[], userId: string): Promise<Tag[]> => {
         const { data, error } = await supabase
             .from("tags")
-            .upsert([...tags], { onConflict: "label" })
+            .upsert(tags.map((t) => ({ ...t, user_id: userId })), { onConflict: "label,user_id" })
             .select()
 
         if (error) throw error;

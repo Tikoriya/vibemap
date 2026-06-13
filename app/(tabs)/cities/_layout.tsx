@@ -8,7 +8,7 @@ export default function CitiesStackLayout() {
       <Stack.Screen name="index" options={{ headerShown: false, title: "Cities" }} />
       <Stack.Screen name="create" options={{ title: "Create City" }} />
       <Stack.Screen
-        name="[cityId]"
+        name="[cityid]"
         options={{ headerShown: false }}
       />
     </Stack>

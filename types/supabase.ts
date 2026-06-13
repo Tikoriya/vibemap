@@ -73,6 +73,9 @@ export type Database = {
           id: number
           name: string
           notes: string | null
+          address: string | null
+          latitude: number | null
+          longitude: number | null
         }
         Insert: {
           city_id: number
@@ -80,6 +83,9 @@ export type Database = {
           id?: number
           name: string
           notes?: string | null
+          address?: string | null
+          latitude?: number | null
+          longitude?: number | null
         }
         Update: {
           city_id?: number
@@ -87,6 +93,9 @@ export type Database = {
           id?: number
           name?: string
           notes?: string | null
+          address?: string | null
+          latitude?: number | null
+          longitude?: number | null
         }
         Relationships: [
           {

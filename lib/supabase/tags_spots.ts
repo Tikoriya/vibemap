@@ -16,10 +16,19 @@ export const tagsSpotsApi = {
     createTagsSpots: async (spotTagLinks: NewSpotTag[]): Promise<NewSpotTag[]> => {
         const { data, error } = await supabase
             .from("spot_tags")
-            .upsert(spotTagLinks, {onConflict: 'spot_id, tag_id' })
+            .insert(spotTagLinks)
             .select();
 
         if (error) throw error;
         return data || [];
+    },
+
+    deleteSpotTags: async (spotId: number): Promise<void> => {
+        const { error } = await supabase
+            .from("spot_tags")
+            .delete()
+            .eq("spot_id", spotId);
+
+        if (error) throw error;
     },
 }
