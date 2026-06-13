@@ -33,6 +33,38 @@ export type Database = {
         }
         Relationships: []
       }
+      spot_photos: {
+        Row: {
+          id: number
+          spot_id: number
+          url: string
+          position: number
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          spot_id: number
+          url: string
+          position?: number
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          spot_id?: number
+          url?: string
+          position?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spot_photos_spot_id_fkey"
+            columns: ["spot_id"]
+            isOneToOne: false
+            referencedRelation: "spots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       spot_tags: {
         Row: {
           created_at: string

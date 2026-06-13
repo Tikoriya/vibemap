@@ -102,40 +102,41 @@ Tags describe the vibe of a spot. There are predefined categories (Cocktails, Co
 
 ### Phase 1 — Core MVP
 
-**Authentication**
+**Authentication** ✅
 
-- Sign in with Apple
-- Sign in with Google
-- Magic link via email (no password required)
-- Persistent session — users stay logged in until they log out or delete the app
+- [x] Sign in with Apple
+- [x] Sign in with Google
+- [x] Magic link via email (no password required)
+- [x] Persistent session — users stay logged in until they log out or delete the app
 
-**Cities**
+**Cities** ✅
 
-- Create a city with a name, country, and cover photo
-- Cover photo auto-suggested from Unsplash when a city name is typed; user can replace with their own photo
-- City list displayed as a 2-column image card grid
-- Edit and delete cities
+- [x] Create a city with a name, country, and cover photo
+- [x] Cover photo auto-suggested from Unsplash when a city name is typed; user can replace with their own photo
+- [x] City list displayed as a 2-column image card grid
+- [x] Edit and delete cities
 
-**Spots**
+**Spots** ✅
 
-- Create a spot using Google Places autocomplete — selecting a result auto-fills name, address, latitude/longitude
-- Add a cover photo (from camera roll or camera)
-- Add personal notes
-- Add tags from a predefined list or create custom ones
-- View spots as a scrollable list inside a city
-- Edit and delete spots
-- Spot detail screen with image, address, tags, notes, website, phone, and an "Open in Maps" button
+- [x] Create a spot using Google Places autocomplete — selecting a result auto-fills name, address, latitude/longitude
+- [x] Import a spot by pasting any link (Google Maps, restaurant website, Instagram) — form pre-fills automatically via the `parse-link` Edge Function
+- [x] Add a cover photo (from camera roll or camera)
+- [x] Add personal notes
+- [x] Add tags from a predefined list or create custom ones
+- [x] View spots as a scrollable list inside a city
+- [x] Edit and delete spots
+- [x] Spot detail screen with image, address, tags, notes, website, phone, and an "Open in Maps" button
 
-**Tags**
+**Tags** ✅
 
-- Predefined tag library: Cocktails, Coffee, Work-friendly, Fancy, Casual, Brunch, Nightlife, Nature, and more
-- Custom tag creation
-- Tags are color-coded by vibe category
-- Filter spots in a city by one or more tags
+- [x] Predefined tag library: Cocktails, Coffee, Work-friendly, Fancy, Casual, Brunch, Nightlife, Nature, and more
+- [x] Custom tag creation
+- [x] Tags are color-coded by vibe category
+- [x] Filter spots in a city by one or more tags
 
-**Profile**
+**Profile** ✅
 
-- Account screen with name, avatar (pulled from OAuth provider), and logout
+- [x] Account screen with name, avatar (pulled from OAuth provider), and logout
 
 ---
 
@@ -163,15 +164,17 @@ Tags describe the vibe of a spot. There are predefined categories (Cocktails, Co
 
 ### Phase 3 — Smart Import + Dark Mode
 
-**Import from a link**
+**Import from a link** ✅ (paste-a-link, Phase 3a)
 
-- Paste any URL (Google Maps link, restaurant website, etc.) into the Create Spot screen
-- The app extracts the place name, address, coordinates, website, and phone number automatically via a backend function
-- The form is pre-filled — user adds tags, picks a city, and saves
+- [x] Paste any URL into the Create Spot screen — Google Maps links (including `maps.app.goo.gl` short links), restaurant websites, and Instagram posts (best-effort) are supported
+- [x] The app extracts the place name and resolves it via Google Places — form is pre-filled with name, address, and coordinates
+- [x] User reviews, adds tags, and saves — no typing required
 
-**Import from Instagram, TikTok, or any app**
+**How it works:** A Supabase Edge Function (`supabase/functions/parse-link/`) receives the URL, manually follows HTTP redirects with a plain User-Agent (necessary because Google returns a JS interstitial to browsers), extracts the place name from the URL structure (`?q=` param for Maps links) or from `og:` meta tags for websites, uses Gemini (`gemini-1.5-flash`) to parse messy captions into `{ name, city }`, and resolves the result against Google Places Text Search. Secrets: `GEMINI_API_KEY` and `GOOGLE_PLACES_API_KEY` stored as Supabase function secrets.
 
-- iOS: share directly from Instagram/TikTok/Chrome using the native iOS Share Sheet — VibeMap appears as a destination
+**Import from Instagram, TikTok, or any app** (Phase 3b — not yet built)
+
+- iOS: share directly from Instagram/TikTok/Chrome using the native iOS Share Sheet — VibeMap appears as a destination (requires `expo-share-intent` + EAS dev build)
 - Android: same via Android Share Intent
 - The shared URL is processed automatically and opens a pre-filled Create Spot form
 

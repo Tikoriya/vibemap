@@ -1,10 +1,12 @@
 import { PlacesAutocompleteField } from "@/components/GoogleAutoComplete";
+import { SpotPhotoGallery } from "@/components/SpotPhotoGallery";
 import { TagInput } from "@/components/TagInput";
 import { Colors } from "@/constants/Colors";
 import { FontFamily, Typography } from "@/constants/Typography";
 import { useCreateTag } from "@/hooks/useCreateTag";
 import { useSpot } from "@/hooks/useSpot";
 import { spotSchema, SpotFormValues } from "@/lib/schemas/spot";
+import { spotPhotosApi } from "@/lib/supabase/spot_photos";
 import { spotsApi } from "@/lib/supabase/spots";
 import { tagsSpotsApi } from "@/lib/supabase/tags_spots";
 import { Tag } from "@/types";
@@ -52,6 +54,12 @@ export default function SpotDetailScreen() {
   const { data: spot, isLoading } = useQuery({
     queryKey: ["spot", spotid],
     queryFn: () => spotsApi.getSpot(parseInt(spotid)),
+    enabled: !!spotid,
+  });
+
+  const { data: spotPhotos = [] } = useQuery({
+    queryKey: ["spot_photos", spotid],
+    queryFn: () => spotPhotosApi.fetchForSpot(parseInt(spotid)),
     enabled: !!spotid,
   });
 
@@ -327,59 +335,65 @@ export default function SpotDetailScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {spot.address ? (
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-                Address
-              </Text>
-              <Text style={[Typography.body, { color: theme.text }]}>
-                {spot.address}
-              </Text>
-            </View>
+          {spotPhotos.length > 0 ? (
+            <SpotPhotoGallery photos={spotPhotos.map((p) => p.url)} />
           ) : null}
 
-          {spot.notes ? (
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-                Notes
-              </Text>
-              <Text style={[Typography.body, { color: theme.text }]}>
-                {spot.notes}
-              </Text>
-            </View>
-          ) : null}
-
-          {tags.length > 0 ? (
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-                Tags
-              </Text>
-              <View style={styles.tagsRow}>
-                {tags.map((tag) => (
-                  <View
-                    key={tag.id}
-                    style={[styles.tagPill, { backgroundColor: theme.accentSubtle }]}
-                  >
-                    <Text style={[styles.tagPillText, { color: theme.accent }]}>
-                      {tag.label}
-                    </Text>
-                  </View>
-                ))}
+          <View style={styles.textContent}>
+            {spot.address ? (
+              <View style={styles.section}>
+                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+                  Address
+                </Text>
+                <Text style={[Typography.body, { color: theme.text }]}>
+                  {spot.address}
+                </Text>
               </View>
-            </View>
-          ) : null}
+            ) : null}
 
-          {spot.latitude && spot.longitude ? (
-            <TouchableOpacity
-              style={[styles.mapsButton, { backgroundColor: theme.accent }]}
-              onPress={handleOpenInMaps}
-              activeOpacity={0.85}
-            >
-              <Text style={[Typography.button, styles.mapsButtonText]}>
-                Open in Maps
-              </Text>
-            </TouchableOpacity>
-          ) : null}
+            {spot.notes ? (
+              <View style={styles.section}>
+                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+                  Notes
+                </Text>
+                <Text style={[Typography.body, { color: theme.text }]}>
+                  {spot.notes}
+                </Text>
+              </View>
+            ) : null}
+
+            {tags.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+                  Tags
+                </Text>
+                <View style={styles.tagsRow}>
+                  {tags.map((tag) => (
+                    <View
+                      key={tag.id}
+                      style={[styles.tagPill, { backgroundColor: theme.accentSubtle }]}
+                    >
+                      <Text style={[styles.tagPillText, { color: theme.accent }]}>
+                        {tag.label}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {spot.latitude && spot.longitude ? (
+              <TouchableOpacity
+                style={[styles.mapsButton, { backgroundColor: theme.accent }]}
+                onPress={handleOpenInMaps}
+                activeOpacity={0.85}
+              >
+                <Text style={[Typography.button, styles.mapsButtonText]}>
+                  Open in Maps
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -418,9 +432,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   content: {
+    paddingBottom: 24,
+    gap: 0,
+  },
+  textContent: {
     paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: 24,
     gap: 24,
   },
   section: {

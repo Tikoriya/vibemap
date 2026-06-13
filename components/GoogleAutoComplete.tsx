@@ -2,7 +2,7 @@ import googleApi, { PlaceDetail } from '@/lib/services/google';
 import { useAutoComplete } from '@/hooks/useAutoComplete';
 import { Colors } from '@/constants/Colors';
 import { FontFamily, Typography } from '@/constants/Typography';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -23,11 +23,19 @@ type Suggestion = {
 type Props = {
   onPlaceSelected: (place: PlaceDetail) => void;
   error?: string;
+  prefillValue?: string;
 };
 
 export const PlacesAutocompleteField = (props: Props) => {
-  const { onPlaceSelected, error } = props;
+  const { onPlaceSelected, error, prefillValue } = props;
   const [inputValue, setInputValue] = useState('');
+
+  useEffect(() => {
+    if (prefillValue) {
+      setInputValue(prefillValue);
+      setDebouncedQuery('');
+    }
+  }, [prefillValue]);
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);

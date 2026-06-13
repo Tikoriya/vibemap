@@ -1,0 +1,425 @@
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+  });
+}
+
+function errorResponse(message: string, status = 400) {
+  return jsonResponse({ error: message }, status);
+}
+
+// ---------------------------------------------------------------------------
+// URL validation
+// ---------------------------------------------------------------------------
+function isValidHttpUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Manually follow HTTP redirects (up to 8 hops) reading the Location header.
+// Deno Edge Functions can't always follow the maps.app.goo.gl redirect chain
+// automatically, so we do it ourselves.
+// ---------------------------------------------------------------------------
+async function resolveRedirectManually(url: string): Promise<string> {
+  let current = url;
+  for (let i = 0; i < 8; i++) {
+    let res: Response;
+    try {
+      res = await fetch(current, {
+        method: "GET",
+        headers: {
+          // A plain curl-like UA causes Google to return HTTP 302 redirects instead of
+          // the JavaScript "Open in App" interstitial page it shows to real browsers.
+          "User-Agent": "curl/8.7.1",
+          "Accept": "*/*",
+        },
+        redirect: "manual",
+      });
+    } catch {
+      break;
+    }
+
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      if (!location) break;
+      current = location.startsWith("http") ? location : new URL(location, current).href;
+    } else {
+      break;
+    }
+  }
+  return current;
+}
+
+// ---------------------------------------------------------------------------
+// Page fetch + og:/JSON-LD extraction
+// ---------------------------------------------------------------------------
+type PageMeta = {
+  title: string;
+  description: string;
+  imageUrl: string;
+  resolvedUrl: string;
+};
+
+async function fetchPageMeta(url: string): Promise<PageMeta> {
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+    redirect: "follow",
+  });
+
+  const resolvedUrl = res.url ?? url;
+  const html = await res.text();
+
+  const og = (prop: string) => {
+    const m = html.match(new RegExp(`<meta[^>]+property=["']og:${prop}["'][^>]+content=["']([^"']+)["']`, "i"))
+      ?? html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:${prop}["']`, "i"));
+    return m ? decodeHtmlEntities(m[1]) : "";
+  };
+
+  const meta = (name: string) => {
+    const m = html.match(new RegExp(`<meta[^>]+name=["']${name}["'][^>]+content=["']([^"']+)["']`, "i"))
+      ?? html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+name=["']${name}["']`, "i"));
+    return m ? decodeHtmlEntities(m[1]) : "";
+  };
+
+  const title =
+    og("title") ||
+    meta("title") ||
+    extractTag(html, "title") ||
+    "";
+
+  const description = og("description") || meta("description") || "";
+  const imageUrl = og("image") || "";
+
+  return { title, description, imageUrl, resolvedUrl };
+}
+
+function extractTag(html: string, tag: string): string {
+  const m = html.match(new RegExp(`<${tag}[^>]*>([^<]+)<\/${tag}>`, "i"));
+  return m ? decodeHtmlEntities(m[1].trim()) : "";
+}
+
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&apos;/g, "'");
+}
+
+// ---------------------------------------------------------------------------
+// Google Maps URL handling: extract query/place name from URL patterns
+// ---------------------------------------------------------------------------
+function isGoogleMapsUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return (
+      host === "maps.google.com" ||
+      host === "www.google.com" ||
+      host === "maps.app.goo.gl" ||
+      host === "goo.gl"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function extractGoogleMapsHints(url: string): string {
+  try {
+    const u = new URL(url);
+
+    // https://maps.google.com/?q=Name+of+Place
+    // https://www.google.com/maps?q=Name+of+Place
+    const q = u.searchParams.get("q");
+    if (q) return q;
+
+    // https://www.google.com/maps/place/Name/@lat,lng,...
+    const placeMatch = u.pathname.match(/\/maps\/place\/([^/@]+)/);
+    if (placeMatch) return decodeURIComponent(placeMatch[1].replace(/\+/g, " "));
+
+    // https://www.google.com/maps/search/Name+of+Place/...
+    const searchMatch = u.pathname.match(/\/maps\/search\/([^/]+)/);
+    if (searchMatch) return decodeURIComponent(searchMatch[1].replace(/\+/g, " "));
+  } catch {
+    // ignore
+  }
+  return "";
+}
+
+// ---------------------------------------------------------------------------
+// Gemini: extract structured place info from page text
+// ---------------------------------------------------------------------------
+type GeminiPlace = {
+  name: string;
+  city: string;
+  hints: string;
+};
+
+async function extractWithGemini(
+  pageText: string,
+  geminiKey: string,
+): Promise<GeminiPlace> {
+  const prompt = `You are a place-extraction assistant. Given the following text scraped from a webpage or social media post, extract the name of the real-world place being referred to and the city it is in.
+
+Return ONLY a JSON object with these fields (no markdown, no explanation):
+{
+  "name": "exact name of the place (restaurant, bar, café, hotel, museum, shop, etc.)",
+  "city": "city name, e.g. Vienna, Paris, New York",
+  "hints": "any additional context that helps identify the place (address fragment, neighbourhood, landmark nearby)"
+}
+
+If there is no identifiable place in the text, return:
+{"name":"","city":"","hints":""}
+
+Text:
+${pageText.slice(0, 2000)}`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 256 },
+      }),
+    },
+  );
+
+  if (!res.ok) {
+    throw new Error(`Gemini API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const raw: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("Gemini returned no JSON");
+
+  return JSON.parse(jsonMatch[0]) as GeminiPlace;
+}
+
+// ---------------------------------------------------------------------------
+// Google Places Text Search
+// ---------------------------------------------------------------------------
+type ResolvedPlace = {
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  websiteUri?: string;
+  phoneNumber?: string;
+  placeId?: string;
+  photoNames?: string[];
+};
+
+async function resolveWithPlaces(
+  query: string,
+  placesKey: string,
+): Promise<ResolvedPlace | null> {
+  const res = await fetch(
+    "https://places.googleapis.com/v1/places:searchText",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": placesKey,
+        "X-Goog-FieldMask":
+          "places.displayName,places.formattedAddress,places.location,places.websiteUri,places.nationalPhoneNumber,places.id,places.photos",
+      },
+      body: JSON.stringify({ textQuery: query }),
+    },
+  );
+
+  if (!res.ok) {
+    throw new Error(`Places API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const place = data?.places?.[0];
+  if (!place) return null;
+
+  const photoNames: string[] = (place.photos ?? [])
+    .slice(0, 6)
+    .map((p: { name: string }) => p.name)
+    .filter(Boolean);
+
+  return {
+    name: place.displayName?.text ?? "",
+    address: place.formattedAddress ?? "",
+    latitude: place.location?.latitude ?? 0,
+    longitude: place.location?.longitude ?? 0,
+    websiteUri: place.websiteUri,
+    phoneNumber: place.nationalPhoneNumber,
+    placeId: place.id,
+    photoNames,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Resolve photo names -> public photoUri values via Places photo-media API
+// ---------------------------------------------------------------------------
+async function resolvePhotoUrls(
+  photoNames: string[],
+  placesKey: string,
+): Promise<string[]> {
+  const results = await Promise.allSettled(
+    photoNames.map(async (name) => {
+      const url = `https://places.googleapis.com/v1/${name}/media?maxWidthPx=800&skipHttpRedirect=true`;
+      const res = await fetch(url, {
+        headers: { "X-Goog-Api-Key": placesKey },
+      });
+      if (!res.ok) throw new Error(`photo media error: ${res.status}`);
+      const data = await res.json();
+      const uri = data?.photoUri as string | undefined;
+      if (!uri) throw new Error("no photoUri");
+      return uri;
+    }),
+  );
+
+  return results
+    .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled")
+    .map((r) => r.value);
+}
+
+// ---------------------------------------------------------------------------
+// Main handler
+// ---------------------------------------------------------------------------
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: CORS_HEADERS });
+  }
+
+  if (req.method !== "POST") {
+    return errorResponse("Method not allowed", 405);
+  }
+
+  let body: { url?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return errorResponse("Invalid JSON body");
+  }
+
+  const rawUrl = body?.url?.trim() ?? "";
+  if (!rawUrl) return errorResponse("Missing url");
+  if (!isValidHttpUrl(rawUrl)) return errorResponse("Invalid URL — must be http or https");
+
+  const geminiKey = Deno.env.get("GEMINI_API_KEY");
+  const placesKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
+
+  if (!geminiKey || !placesKey) {
+    return errorResponse("Server misconfiguration: missing API keys", 500);
+  }
+
+  // --- Step 1: manually resolve short links to get the true destination URL ---
+  // maps.app.goo.gl uses an app-detection interstitial that Deno's auto-redirect can't
+  // follow reliably. We read Location headers ourselves.
+  let startUrl = rawUrl;
+  if (isGoogleMapsUrl(rawUrl) || rawUrl.includes("goo.gl")) {
+    startUrl = await resolveRedirectManually(rawUrl);
+  }
+
+  // --- Step 2: fast path for Google Maps — extract place name straight from the final URL ---
+  const googleMapsHint =
+    extractGoogleMapsHints(startUrl) || extractGoogleMapsHints(rawUrl);
+
+  // --- Step 3: fetch the page for og: tags (also captures any remaining redirect) ---
+  let meta: PageMeta;
+  try {
+    meta = await fetchPageMeta(startUrl);
+  } catch (e) {
+    return errorResponse(`Could not fetch the link: ${(e as Error).message}`);
+  }
+
+  const resolvedUrl = meta.resolvedUrl;
+
+  // Also check the final URL from the GET fetch in case manual resolution stopped short
+  const mapsHint =
+    googleMapsHint ||
+    extractGoogleMapsHints(resolvedUrl);
+
+  let extracted: GeminiPlace;
+
+  if (mapsHint) {
+    // Clean place name already in the URL — skip Gemini entirely
+    extracted = { name: mapsHint, city: "", hints: "" };
+  } else {
+    // --- Step 3: Gemini extraction from og: tags / page text ---
+    const pageText = [
+      meta.title ? `Title: ${meta.title}` : "",
+      meta.description ? `Description: ${meta.description}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    if (!pageText.trim()) {
+      return errorResponse(
+        "Could not read any content from this link. Instagram posts and some protected pages cannot be read — try pasting the place name directly.",
+      );
+    }
+
+    try {
+      extracted = await extractWithGemini(pageText, geminiKey);
+    } catch (e) {
+      return errorResponse(`Could not extract place info: ${(e as Error).message}`, 500);
+    }
+
+    if (!extracted.name) {
+      return errorResponse(
+        "No place found in this link. Try a Google Maps link, a restaurant website, or paste the place name directly.",
+      );
+    }
+  }
+
+  // --- Step 4: Google Places Text Search ---
+  const searchQuery = [extracted.name, extracted.city, extracted.hints]
+    .filter(Boolean)
+    .join(", ");
+
+  let resolved: ResolvedPlace | null;
+  try {
+    resolved = await resolveWithPlaces(searchQuery, placesKey);
+  } catch (e) {
+    return errorResponse(`Could not resolve place: ${(e as Error).message}`, 500);
+  }
+
+  if (!resolved) {
+    return errorResponse(
+      `Found a place called "${extracted.name}" but could not locate it in Google Maps. Try a more specific link.`,
+    );
+  }
+
+  const photos = resolved.photoNames?.length
+    ? await resolvePhotoUrls(resolved.photoNames, placesKey)
+    : [];
+
+  return jsonResponse({
+    name: resolved.name,
+    address: resolved.address,
+    latitude: resolved.latitude,
+    longitude: resolved.longitude,
+    websiteUri: resolved.websiteUri ?? null,
+    phoneNumber: resolved.phoneNumber ?? null,
+    notes: `Imported from: ${resolvedUrl}`,
+    sourceUrl: resolvedUrl,
+    photos,
+  });
+});

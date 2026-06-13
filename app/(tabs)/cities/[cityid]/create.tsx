@@ -1,12 +1,16 @@
 import { PlacesAutocompleteField } from "@/components/GoogleAutoComplete";
+import { ImportedPhotos } from "@/components/ImportedPhotos";
+import { ImportLinkField } from "@/components/ImportLinkField";
 import { TagInput } from "@/components/TagInput";
 import { Colors } from "@/constants/Colors";
 import { FontFamily, Typography } from "@/constants/Typography";
 import { useCreateTag } from "@/hooks/useCreateTag";
 import { useSpot } from "@/hooks/useSpot";
-import { spotSchema, SpotFormValues } from "@/lib/schemas/spot";
-import { tagsSpotsApi } from "@/lib/supabase/tags_spots";
+import { SpotFormValues, spotSchema } from "@/lib/schemas/spot";
 import { useAuthStore } from "@/lib/store";
+import { uploadPhotoFromUrl } from "@/lib/services/photoUpload";
+import { spotPhotosApi } from "@/lib/supabase/spot_photos";
+import { tagsSpotsApi } from "@/lib/supabase/tags_spots";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -40,6 +44,10 @@ export default function CreateSpotScreen() {
   const queryClient = useQueryClient();
 
   const [tagLabels, setTagLabels] = useState<string[]>([]);
+  const [importedAddress, setImportedAddress] = useState<string | undefined>(
+    undefined,
+  );
+  const [importedPhotos, setImportedPhotos] = useState<string[]>([]);
 
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
@@ -74,17 +82,35 @@ export default function CreateSpotScreen() {
 
       if (tagLabels.length > 0) {
         const createdTags = await createTags(
-          tagLabels.map((label) => ({ label, user_id: user?.id }))
+          tagLabels.map((label) => ({ label, user_id: user?.id })),
         );
         await tagsSpotsApi.createTagsSpots(
           createdTags.map((tag) => ({
             spot_id: createdSpot.id,
             tag_id: tag.id,
-          }))
+          })),
         );
       }
 
-      await queryClient.invalidateQueries({ queryKey: ['spots', cityid] });
+      if (importedPhotos.length > 0) {
+        const results = await Promise.allSettled(
+          importedPhotos.map((url, i) =>
+            uploadPhotoFromUrl(createdSpot.id, url, i),
+          ),
+        );
+        const stored = results
+          .map((r, i) =>
+            r.status === "fulfilled"
+              ? { spot_id: createdSpot.id, url: r.value, position: i }
+              : null,
+          )
+          .filter((r): r is NonNullable<typeof r> => r !== null);
+        if (stored.length > 0) {
+          await spotPhotosApi.insertPhotos(stored);
+        }
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["spots", cityid] });
       router.back();
     } catch {
       Alert.alert("Error", "Could not save spot. Please try again.");
@@ -119,6 +145,42 @@ export default function CreateSpotScreen() {
           showsVerticalScrollIndicator={false}
           style={{ flex: 1 }}
         >
+          {/* Import from link */}
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: theme.textSecondary }]}>
+              Import from link
+            </Text>
+            <ImportLinkField
+              onImported={(spot) => {
+                setValue("name", spot.name, { shouldValidate: true });
+                setValue("address", spot.address, { shouldValidate: true });
+                setValue("latitude", spot.latitude);
+                setValue("longitude", spot.longitude);
+                setImportedAddress(spot.address);
+                setImportedPhotos(spot.photos ?? []);
+              }}
+            />
+            <ImportedPhotos
+              photos={importedPhotos}
+              onRemove={(url) =>
+                setImportedPhotos((prev) => prev.filter((p) => p !== url))
+              }
+            />
+          </View>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View
+              style={[styles.dividerLine, { backgroundColor: theme.border }]}
+            />
+            <Text style={[styles.dividerText, { color: theme.textSecondary }]}>
+              OR
+            </Text>
+            <View
+              style={[styles.dividerLine, { backgroundColor: theme.border }]}
+            />
+          </View>
+
           {/* Address — Google Places autocomplete */}
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.textSecondary }]}>
@@ -130,8 +192,11 @@ export default function CreateSpotScreen() {
               render={() => (
                 <PlacesAutocompleteField
                   error={errors.address?.message}
+                  prefillValue={importedAddress}
                   onPlaceSelected={(place) => {
-                    setValue("address", place.address, { shouldValidate: true });
+                    setValue("address", place.address, {
+                      shouldValidate: true,
+                    });
                     setValue("latitude", place.latitude);
                     setValue("longitude", place.longitude);
                     if (!control._formValues.name) {
@@ -293,6 +358,19 @@ const styles = StyleSheet.create({
   notesInput: {
     height: 96,
     paddingTop: 14,
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  dividerText: {
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
   },
   errorText: {
     ...Typography.secondary,
