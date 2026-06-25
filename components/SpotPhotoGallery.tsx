@@ -1,10 +1,9 @@
 import { Radius, Spacing } from "@/constants/Theme";
 import React from "react";
-import { Dimensions, Image, ScrollView, StyleSheet, View } from "react-native";
+import { Image, ScrollView, StyleSheet } from "react-native";
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
-const GALLERY_HEIGHT = 260;
-const ITEM_WIDTH = SCREEN_WIDTH * 0.78;
+const THUMB_WIDTH = 124;
+const THUMB_HEIGHT = 156;
 
 type Props = {
   photos: string[];
@@ -14,14 +13,6 @@ export const SpotPhotoGallery = (props: Props) => {
   const { photos } = props;
 
   if (photos.length === 0) return null;
-
-  if (photos.length === 1) {
-    return (
-      <View style={styles.single}>
-        <Image source={{ uri: photos[0] }} style={styles.singleImage} resizeMode="cover" />
-      </View>
-    );
-  }
 
   return (
     <ScrollView
@@ -33,7 +24,7 @@ export const SpotPhotoGallery = (props: Props) => {
         <Image
           key={`${uri}-${index}`}
           source={{ uri }}
-          style={styles.galleryImage}
+          style={styles.thumb}
           resizeMode="cover"
         />
       ))}
@@ -42,22 +33,12 @@ export const SpotPhotoGallery = (props: Props) => {
 };
 
 const styles = StyleSheet.create({
-  single: {
-    width: "100%",
-    paddingHorizontal: Spacing.space4,
-  },
-  singleImage: {
-    width: "100%",
-    height: 240,
-    borderRadius: Radius.lg,
-  },
   scrollContent: {
-    paddingHorizontal: Spacing.space4,
     gap: Spacing.space3,
   },
-  galleryImage: {
-    width: ITEM_WIDTH,
-    height: GALLERY_HEIGHT,
+  thumb: {
+    width: THUMB_WIDTH,
+    height: THUMB_HEIGHT,
     borderRadius: Radius.lg,
   },
 });

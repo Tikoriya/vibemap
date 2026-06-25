@@ -22,12 +22,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Tag as TagIcon } from "lucide-react-native";
+import {
+  ChevronLeft,
+  MapPin,
+  Navigation,
+  Pencil,
+  Tag as TagIcon,
+} from "lucide-react-native";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
+  Image,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -38,7 +46,13 @@ import {
   useColorScheme,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+
+const HERO_HEIGHT = Math.round(Dimensions.get("window").height * 0.48);
+const SHEET_OVERLAP = 28;
 
 type SpotRouteParams = {
   cityid: string;
@@ -58,8 +72,8 @@ export default function SpotDetailScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const theme = isDark ? Colors.dark : Colors.light;
+  const insets = useSafeAreaInsets();
   const tabBarPadding = useBottomTabOverflow();
-  const scrollContentStyle = [styles.content, { paddingBottom: 24 + tabBarPadding }];
   const editContentStyle = [
     styles.editContent,
     { paddingBottom: 24 + tabBarPadding },
@@ -264,28 +278,19 @@ export default function SpotDetailScreen() {
 
   const tags = ((spot as any).tags as Tag[] | undefined) ?? [];
 
-  return (
-    <SafeAreaView
-      style={[styles.safe, { backgroundColor: theme.background }]}
-      edges={["top", "bottom"]}
-    >
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        {isEditing ? (
+  if (isEditing) {
+    return (
+      <SafeAreaView
+        style={[styles.safe, { backgroundColor: theme.background }]}
+        edges={["top", "bottom"]}
+      >
+        <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <TouchableOpacity onPress={cancelEdit} activeOpacity={0.7}>
             <Text style={[styles.headerActionText, { color: theme.textSecondary }]}>
               Cancel
             </Text>
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
-            <Text style={[styles.headerActionText, { color: theme.accent }]}>
-              ‹ Back
-            </Text>
-          </TouchableOpacity>
-        )}
 
-        {isEditing ? (
           <TouchableOpacity
             onPress={handleSubmit(onSave)}
             disabled={isSubmitting}
@@ -294,21 +299,18 @@ export default function SpotDetailScreen() {
             {isSubmitting ? (
               <ActivityIndicator size="small" color={theme.accent} />
             ) : (
-              <Text style={[styles.headerActionText, { color: theme.accent, textAlign: "right" }]}>
+              <Text
+                style={[
+                  styles.headerActionText,
+                  { color: theme.accent, textAlign: "right" },
+                ]}
+              >
                 Save
               </Text>
             )}
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={enterEditMode} activeOpacity={0.7}>
-            <Text style={[styles.headerActionText, { color: theme.accent, textAlign: "right" }]}>
-              Edit
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+        </View>
 
-      {isEditing ? (
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -397,81 +399,120 @@ export default function SpotDetailScreen() {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      ) : (
-        <ScrollView
-          contentContainerStyle={scrollContentStyle}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={[Typography.title, styles.spotTitle, { color: theme.text }]}>
+      </SafeAreaView>
+    );
+  }
+
+  const coverPhoto = spotPhotos[0]?.url;
+  const galleryPhotos = spotPhotos.slice(1).map((p) => p.url);
+
+  return (
+    <View style={[styles.safe, { backgroundColor: theme.background }]}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.heroScrollContent,
+          { paddingBottom: 24 + tabBarPadding },
+        ]}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        {/* Cover image hero */}
+        <View style={styles.hero}>
+          {coverPhoto ? (
+            <Image
+              source={{ uri: coverPhoto }}
+              style={styles.heroImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View
+              style={[styles.heroImage, { backgroundColor: theme.surfaceElevated }]}
+            />
+          )}
+        </View>
+
+        {/* Overlapping content sheet */}
+        <View style={[styles.sheet, { backgroundColor: theme.background }]}>
+          <Text style={[Typography.heading1, { color: theme.text }]}>
             {spot.name}
           </Text>
 
-          {spotPhotos.length > 0 ? (
-            <SpotPhotoGallery photos={spotPhotos.map((p) => p.url)} />
+          {spot.address ? (
+            <View style={styles.addressRow}>
+              <MapPin size={15} color={theme.textSecondary} strokeWidth={2} />
+              <Text
+                style={[Typography.secondary, styles.addressText, { color: theme.textSecondary }]}
+              >
+                {spot.address}
+              </Text>
+            </View>
           ) : null}
 
-          <View style={styles.textContent}>
-            {spot.address ? (
-              <View style={styles.section}>
-                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-                  Address
-                </Text>
-                <Text style={[Typography.body, { color: theme.text }]}>
-                  {spot.address}
-                </Text>
-              </View>
-            ) : null}
+          {galleryPhotos.length > 0 ? (
+            <View style={styles.galleryWrap}>
+              <SpotPhotoGallery photos={galleryPhotos} />
+            </View>
+          ) : null}
 
-            {tags.length > 0 ? (
-              <View style={styles.section}>
-                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-                  Tags
-                </Text>
-                <View style={styles.tagsRow}>
-                  {tags.map((tag) => {
-                    const Icon = getTagIcon(tag.label);
-                    return (
-                      <View
-                        key={tag.id}
-                        style={[styles.tagPill, { backgroundColor: theme.accentSubtle }]}
-                      >
-                        <Icon size={14} color={theme.accent} strokeWidth={2} />
-                        <Text style={[styles.tagPillText, { color: theme.accent }]}>
-                          {tag.label}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            ) : null}
+          {spot.notes ? (
+            <Text style={[Typography.body, styles.notes, { color: theme.text }]}>
+              {spot.notes}
+            </Text>
+          ) : null}
 
-            {spot.notes ? (
-              <View style={styles.section}>
-                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-                  Notes
-                </Text>
-                <Text style={[Typography.body, { color: theme.text }]}>
-                  {spot.notes}
-                </Text>
-              </View>
-            ) : null}
+          {tags.length > 0 ? (
+            <View style={styles.tagsRow}>
+              {tags.map((tag) => {
+                const Icon = getTagIcon(tag.label);
+                return (
+                  <View
+                    key={tag.id}
+                    style={[styles.tagPill, { backgroundColor: theme.accentSubtle }]}
+                  >
+                    <Icon size={14} color={theme.accent} strokeWidth={2} />
+                    <Text style={[styles.tagPillText, { color: theme.accent }]}>
+                      {tag.label}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
 
-            {spot.latitude && spot.longitude ? (
-              <TouchableOpacity
-                style={[styles.mapsButton, { backgroundColor: theme.accent }]}
-                onPress={handleOpenInMaps}
-                activeOpacity={0.85}
-              >
-                <Text style={[Typography.button, styles.mapsButtonText]}>
-                  Open in Maps
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </ScrollView>
-      )}
-    </SafeAreaView>
+          {spot.latitude && spot.longitude ? (
+            <TouchableOpacity
+              style={[styles.mapsButton, { backgroundColor: theme.accent }]}
+              onPress={handleOpenInMaps}
+              activeOpacity={0.85}
+            >
+              <Navigation size={17} color={Palette.paper100} strokeWidth={2} />
+              <Text style={[Typography.button, styles.mapsButtonText]}>
+                Open in Maps
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </ScrollView>
+
+      {/* Floating header controls */}
+      <View style={[styles.floatingHeader, { top: insets.top + 8 }]}>
+        <TouchableOpacity
+          style={styles.floatingButton}
+          onPress={() => router.back()}
+          activeOpacity={0.8}
+        >
+          <ChevronLeft size={22} color={Palette.paper0} strokeWidth={2.2} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.floatingButton}
+          onPress={enterEditMode}
+          activeOpacity={0.8}
+        >
+          <Pencil size={18} color={Palette.paper0} strokeWidth={2.2} />
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -500,32 +541,61 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.medium,
     fontSize: 16,
   },
-  spotTitle: {
-    paddingHorizontal: 20,
-    paddingTop: Spacing.space4,
-    paddingBottom: Spacing.space4,
-  },
-  content: {
-    paddingBottom: 24,
-    gap: 0,
-  },
   editContent: {
     paddingHorizontal: Spacing.space4,
     paddingTop: Spacing.space6,
     paddingBottom: 24,
     gap: Spacing.space6,
   },
-  textContent: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    gap: 24,
+  heroScrollContent: {
+    paddingBottom: 24,
   },
-  section: {
-    gap: 6,
+  hero: {
+    width: "100%",
+    height: HERO_HEIGHT,
   },
-  sectionLabel: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 13,
+  heroImage: {
+    width: "100%",
+    height: "100%",
+  },
+  sheet: {
+    marginTop: -SHEET_OVERLAP,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    paddingHorizontal: Spacing.space6,
+    paddingTop: Spacing.space6,
+    gap: Spacing.space4,
+  },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.space2,
+    marginTop: -Spacing.space2,
+  },
+  addressText: {
+    flex: 1,
+  },
+  galleryWrap: {
+    marginHorizontal: -Spacing.space6,
+    paddingHorizontal: Spacing.space6,
+  },
+  notes: {
+    marginTop: -Spacing.space1,
+  },
+  floatingHeader: {
+    position: "absolute",
+    left: Spacing.space4,
+    right: Spacing.space4,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  floatingButton: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(20, 32, 26, 0.45)",
   },
   tagsRow: {
     flexDirection: "row",
@@ -545,9 +615,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   mapsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.space2,
     borderRadius: 14,
     paddingVertical: 15,
-    alignItems: "center",
+    marginTop: Spacing.space2,
   },
   mapsButtonText: {
     color: Palette.paper100,
