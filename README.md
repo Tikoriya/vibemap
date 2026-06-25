@@ -26,6 +26,13 @@ ALTER TABLE spots
   ADD COLUMN IF NOT EXISTS longitude FLOAT8;
 ```
 
+If the `cities` table is missing the `country` column (used on the city card), also run:
+
+```sql
+ALTER TABLE cities
+  ADD COLUMN IF NOT EXISTS country TEXT;
+```
+
 ### 2. Install dependencies
 
 ```bash
@@ -35,7 +42,7 @@ npm install
 ### 3. Start the dev server
 
 ```bash
-npx expo start
+npx expo start --tunnel
 ```
 
 Then press `i` for iOS simulator or `a` for Android emulator.

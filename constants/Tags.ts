@@ -16,16 +16,17 @@ export type PredefinedTag = {
   color: string;
 };
 
+// Drawn from the Tukka design palette — forest / ochre / plum / semantic tones.
 export const TAG_COLORS: Record<TagCategory, string> = {
-  cocktails: '#C4572A',
-  coffee: '#8B5E3C',
-  food: '#D4933A',
-  fancy: '#8B6FAD',
-  workFriendly: '#4A7C59',
-  casual: '#5B7FA8',
-  nightlife: '#2D3A5E',
-  nature: '#5A7A4A',
-  custom: '#8C8078',
+  cocktails: '#6C3FD4', // plum
+  coffee: '#C9912F', // ochre
+  food: '#D9772E', // caution / warm
+  fancy: '#3A4F44', // forest 600
+  workFriendly: '#3F8A5F', // open / green
+  casual: '#3A6FB0', // info / blue
+  nightlife: '#1C2A23', // forest 800
+  nature: '#6F8378', // sage 400
+  custom: '#9AA096', // muted
 };
 
 export const PREDEFINED_TAGS: PredefinedTag[] = [

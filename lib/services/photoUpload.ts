@@ -2,6 +2,22 @@ import { supabase } from "@/utils/supabase";
 
 const BUCKET = "spot-photos";
 
+async function uploadBytes(
+  spotId: number,
+  position: number,
+  bytes: Uint8Array,
+): Promise<string> {
+  const storagePath = `${spotId}/${position}-${Date.now()}.jpg`;
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(storagePath, bytes, { contentType: "image/jpeg", upsert: false });
+
+  if (error) throw new Error(error.message);
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
+  return data.publicUrl;
+}
+
 export async function uploadPhotoFromUrl(
   spotId: number,
   url: string,
@@ -16,15 +32,24 @@ export async function uploadPhotoFromUrl(
   }
 
   const arrayBuffer = await response.arrayBuffer();
-  const uint8Array = new Uint8Array(arrayBuffer);
+  return uploadBytes(spotId, position, new Uint8Array(arrayBuffer));
+}
 
-  const storagePath = `${spotId}/${position}-${Date.now()}.jpg`;
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(storagePath, uint8Array, { contentType: "image/jpeg", upsert: false });
+export async function uploadPhotoFromUri(
+  spotId: number,
+  uri: string,
+  position: number,
+): Promise<string> {
+  const response = await fetch(uri);
+  const arrayBuffer = await response.arrayBuffer();
+  return uploadBytes(spotId, position, new Uint8Array(arrayBuffer));
+}
 
-  if (error) throw new Error(error.message);
+export async function deletePhotosFromStorage(urls: string[]): Promise<void> {
+  const paths = urls
+    .map((url) => url.split(`/${BUCKET}/`)[1])
+    .filter((path): path is string => Boolean(path));
 
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
-  return data.publicUrl;
+  if (paths.length === 0) return;
+  await supabase.storage.from(BUCKET).remove(paths);
 }

@@ -1,12 +1,22 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useColorScheme } from 'react-native';
+import {
+  Dimensions,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useColorScheme,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import { Colors } from '@/constants/Colors';
+import { Map, MapPin, Plus } from 'lucide-react-native';
+
+import { useBottomTabOverflow } from '@/components/ui/TabBarBackground';
+import { Colors, Palette, ThemeColors } from '@/constants/Colors';
+import { Elevation, Radius } from '@/constants/Theme';
 import { FontFamily, Typography } from '@/constants/Typography';
 import { useCities } from '@/hooks/useCities';
 import { CityWithCount } from '@/types';
@@ -14,15 +24,17 @@ import { CityWithCount } from '@/types';
 const GAP = 12;
 const PADDING = 16;
 const CARD_WIDTH = (Dimensions.get('window').width - PADDING * 2 - GAP) / 2;
-const CARD_HEIGHT = CARD_WIDTH * 1.25;
+const IMAGE_HEIGHT = Math.round(CARD_WIDTH * 0.82);
+const CARD_HEIGHT = IMAGE_HEIGHT + 64;
 
+// Forest-derived placeholder gradients, in keeping with the design's map surface.
 const CITY_GRADIENTS: [string, string][] = [
-  ['#C4572A', '#E8965A'],
-  ['#5B7FA8', '#A8C5D8'],
-  ['#4A7C59', '#85B89A'],
-  ['#8B6FAD', '#C4A8E0'],
-  ['#8B5E3C', '#C49060'],
-  ['#2D3A5E', '#5B7FA8'],
+  ['#2B3D34', '#3C4F44'],
+  ['#3A4F44', '#6F8378'],
+  ['#1C2A23', '#3A4F44'],
+  ['#33453B', '#3C4F44'],
+  ['#2B3D34', '#6F8378'],
+  ['#14201A', '#2B3D34'],
 ];
 
 function gradientForName(name: string): [string, string] {
@@ -34,39 +46,45 @@ function gradientForName(name: string): [string, string] {
 
 type CityCardProps = {
   city: CityWithCount;
+  theme: ThemeColors;
   onPress: () => void;
 };
 
 const CityCard = (props: CityCardProps) => {
-  const { city, onPress } = props;
+  const { city, theme, onPress } = props;
   const gradient = gradientForName(city.name);
 
+  const placesLabel = `${city.spotCount} ${city.spotCount === 1 ? 'place' : 'places'}`;
+  const meta = city.country ? `${city.country} · ${placesLabel}` : placesLabel;
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
-      {city.imageUrl ? (
-        <Image
-          source={{ uri: city.imageUrl }}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-        />
-      ) : (
-        <LinearGradient colors={gradient} style={StyleSheet.absoluteFill} />
-      )}
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.72)']}
-        style={[StyleSheet.absoluteFill, styles.cardOverlay]}
-      >
-        <View style={styles.cardBottom}>
-          <Text style={styles.cardName} numberOfLines={2}>
-            {city.name}
-          </Text>
-          {city.spotCount > 0 && (
-            <View style={styles.countBadge}>
-              <Text style={styles.countText}>{city.spotCount}</Text>
-            </View>
-          )}
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: theme.surface }, Elevation.card]}
+      onPress={onPress}
+      activeOpacity={0.88}
+    >
+      <View style={styles.cardImage}>
+        {city.imageUrl ? (
+          <Image
+            source={{ uri: city.imageUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
+        ) : (
+          <LinearGradient colors={gradient} style={StyleSheet.absoluteFill} />
+        )}
+        <View style={styles.cardMapButton}>
+          <Map size={15} color={Palette.forest800} />
         </View>
-      </LinearGradient>
+      </View>
+      <View style={styles.cardFooter}>
+        <Text style={[styles.cardName, { color: theme.text }]} numberOfLines={1}>
+          {city.name}
+        </Text>
+        <Text style={[styles.cardMeta, { color: theme.textSecondary }]} numberOfLines={1}>
+          {meta}
+        </Text>
+      </View>
     </TouchableOpacity>
   );
 };
@@ -77,7 +95,11 @@ type SkeletonCardProps = { theme: typeof Colors.light };
 
 const SkeletonCard = (props: SkeletonCardProps) => {
   const { theme } = props;
-  return <View style={[styles.card, { backgroundColor: theme.surfaceElevated }]} />;
+  return (
+    <View
+      style={[styles.card, styles.skeletonCard, { backgroundColor: theme.surfaceElevated }]}
+    />
+  );
 };
 
 // ── Onboarding Empty State ─────────────────────────────────────────────────
@@ -92,7 +114,7 @@ const OnboardingEmpty = (props: OnboardingEmptyProps) => {
   return (
     <View style={styles.emptyContainer}>
       <View style={[styles.emptyIconWrapper, { backgroundColor: theme.accentSubtle }]}>
-        <IconSymbol name="mappin.and.ellipse" size={36} color={theme.accent} />
+        <MapPin size={36} color={theme.accent} />
       </View>
       <Text style={[Typography.title, styles.emptyTitle, { color: theme.text }]}>
         Add your first city
@@ -119,6 +141,7 @@ export default function CitiesScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? Colors.dark : Colors.light;
+  const tabBarPadding = useBottomTabOverflow();
 
   const handleAdd = () => router.push('/cities/create');
 
@@ -132,13 +155,16 @@ export default function CitiesScreen() {
   const isEmpty = !isLoading && (!cities || cities.length === 0);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: theme.background }]}
+      edges={['top']}
+    >
       {/* Header — hidden during onboarding so the empty state fills the screen */}
       {!isEmpty && (
         <View style={styles.header}>
           <Text style={[Typography.title, { color: theme.text }]}>My Cities</Text>
           <TouchableOpacity onPress={handleAdd} hitSlop={8}>
-            <IconSymbol name="plus" size={22} color={theme.accent} />
+            <Plus size={22} color={theme.accent} />
           </TouchableOpacity>
         </View>
       )}
@@ -164,10 +190,13 @@ export default function CitiesScreen() {
           data={cities}
           numColumns={2}
           keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.gridContent}
+          contentContainerStyle={[
+            styles.gridContent,
+            { paddingBottom: PADDING + tabBarPadding },
+          ]}
           columnWrapperStyle={styles.gridRow}
           renderItem={({ item }) => (
-            <CityCard city={item} onPress={() => handleCityPress(item)} />
+            <CityCard city={item} theme={theme} onPress={() => handleCityPress(item)} />
           )}
           showsVerticalScrollIndicator={false}
         />
@@ -197,38 +226,43 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
+    borderRadius: Radius.lg,
+  },
+  skeletonCard: {
     height: CARD_HEIGHT,
-    borderRadius: 20,
+  },
+  cardImage: {
+    height: IMAGE_HEIGHT,
+    borderTopLeftRadius: Radius.lg,
+    borderTopRightRadius: Radius.lg,
     overflow: 'hidden',
   },
-  cardOverlay: {
-    justifyContent: 'flex-end',
-    padding: 12,
+  cardMapButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 30,
+    height: 30,
+    borderRadius: Radius.full,
+    backgroundColor: 'rgba(251,250,245,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardBottom: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
+  cardFooter: {
+    paddingHorizontal: 14,
+    paddingTop: 13,
+    paddingBottom: 15,
   },
   cardName: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontFamily: FontFamily.bold,
-    fontSize: 15,
-    lineHeight: 20,
+    fontFamily: FontFamily.serifSemiBold,
+    fontSize: 19,
+    lineHeight: 23,
   },
-  countBadge: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    minWidth: 26,
-    alignItems: 'center',
-  },
-  countText: {
-    color: '#FFFFFF',
-    fontFamily: FontFamily.bold,
-    fontSize: 11,
+  cardMeta: {
+    fontFamily: FontFamily.regular,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
   },
   skeletonGrid: {
     padding: PADDING,
@@ -262,13 +296,13 @@ const styles = StyleSheet.create({
   },
   emptyButton: {
     marginTop: 8,
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 16,
+    paddingHorizontal: 26,
+    paddingVertical: 15,
+    borderRadius: 14,
   },
   emptyButtonText: {
-    color: '#FFFFFF',
-    fontFamily: FontFamily.bold,
-    fontSize: 16,
+    color: Palette.paper100,
+    fontFamily: FontFamily.semiBold,
+    fontSize: 15,
   },
 });

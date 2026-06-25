@@ -1,9 +1,12 @@
-import { Colors } from "@/constants/Colors";
+import { SpotCard } from "@/components/SpotCard";
+import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
+import { Colors, Palette } from "@/constants/Colors";
+import { Radius } from "@/constants/Theme";
 import { FontFamily, Typography } from "@/constants/Typography";
 import { useCity } from "@/hooks/useCity";
 import { useSpot } from "@/hooks/useSpot";
 import { useTags } from "@/hooks/useTags";
-import { Spot, Tag } from "@/types";
+import { Tag } from "@/types";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -23,70 +26,6 @@ type CityRouteParams = {
   cityName?: string;
 };
 
-function SpotCard(props: {
-  spot: Spot;
-  onPress: () => void;
-  onDelete: () => void;
-  theme: typeof Colors.light;
-}) {
-  const { spot, onPress, onDelete, theme } = props;
-  const tags = (spot as any).tags as Tag[] | undefined;
-
-  const handleDelete = () => {
-    Alert.alert("Delete spot", `Remove "${spot.name}"?`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: onDelete },
-    ]);
-  };
-
-  return (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <View style={styles.cardHeader}>
-        <Text
-          style={[Typography.cardTitle, styles.cardName, { color: theme.text }]}
-          numberOfLines={1}
-        >
-          {spot.name}
-        </Text>
-        <TouchableOpacity
-          onPress={handleDelete}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Text style={[styles.deleteIcon, { color: theme.textSecondary }]}>×</Text>
-        </TouchableOpacity>
-      </View>
-
-      {spot.address ? (
-        <Text
-          style={[Typography.secondary, styles.cardAddress, { color: theme.textSecondary }]}
-          numberOfLines={1}
-        >
-          {spot.address}
-        </Text>
-      ) : null}
-
-      {tags && tags.length > 0 ? (
-        <View style={styles.cardTags}>
-          {tags.map((tag) => (
-            <View
-              key={tag.id}
-              style={[styles.tagChip, { backgroundColor: theme.accentSubtle }]}
-            >
-              <Text style={[styles.tagText, { color: theme.accent }]}>
-                {tag.label}
-              </Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-    </TouchableOpacity>
-  );
-}
-
 export default function CityScreen() {
   const router = useRouter();
   const { cityid, cityName } = useLocalSearchParams<CityRouteParams>();
@@ -97,6 +36,7 @@ export default function CityScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const theme = isDark ? Colors.dark : Colors.light;
+  const tabBarPadding = useBottomTabOverflow();
 
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
@@ -142,7 +82,7 @@ export default function CityScreen() {
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: theme.background }]}
-      edges={["top", "bottom"]}
+      edges={["top"]}
     >
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
@@ -157,7 +97,10 @@ export default function CityScreen() {
       <FlatList
         data={filteredSpots}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[
+          styles.list,
+          { paddingBottom: 24 + tabBarPadding },
+        ]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
@@ -233,7 +176,6 @@ export default function CityScreen() {
         renderItem={({ item }) => (
           <SpotCard
             spot={item}
-            theme={theme}
             onPress={() =>
               router.push({
                 pathname: "/cities/[cityid]/[spotid]",
@@ -285,14 +227,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterChip: {
-    borderWidth: 1,
-    borderRadius: 20,
+    borderWidth: 1.5,
+    borderRadius: Radius.full,
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 8,
     marginRight: 8,
   },
   filterChipText: {
-    fontFamily: FontFamily.medium,
+    fontFamily: FontFamily.semiBold,
     fontSize: 13,
   },
   spotsHeader: {
@@ -303,20 +245,20 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   spotsCount: {
-    fontFamily: FontFamily.medium,
-    fontSize: 13,
+    fontFamily: FontFamily.monoMedium,
+    fontSize: 12,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 1.4,
   },
   addButton: {
-    borderRadius: 20,
+    borderRadius: Radius.full,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 9,
   },
   addButtonText: {
     fontFamily: FontFamily.semiBold,
     fontSize: 14,
-    color: "#FFFFFF",
+    color: Palette.paper100,
   },
   list: {
     paddingBottom: 24,
@@ -325,44 +267,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 32,
     alignItems: "center",
-  },
-  card: {
-    marginHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 16,
-    gap: 6,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 8,
-  },
-  cardName: {
-    flex: 1,
-  },
-  deleteIcon: {
-    fontFamily: FontFamily.regular,
-    fontSize: 22,
-    lineHeight: 24,
-  },
-  cardAddress: {
-    marginTop: 2,
-  },
-  cardTags: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginTop: 4,
-  },
-  tagChip: {
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  tagText: {
-    fontFamily: FontFamily.medium,
-    fontSize: 12,
   },
 });

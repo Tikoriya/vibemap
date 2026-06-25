@@ -25,4 +25,26 @@ export const spotPhotosApi = {
       .eq("spot_id", spotId);
     if (error) throw error;
   },
+
+  deletePhotos: async (ids: number[]): Promise<void> => {
+    if (ids.length === 0) return;
+    const { error } = await supabase
+      .from("spot_photos")
+      .delete()
+      .in("id", ids);
+    if (error) throw error;
+  },
+
+  updatePositions: async (
+    updates: { id: number; position: number }[],
+  ): Promise<void> => {
+    if (updates.length === 0) return;
+    const results = await Promise.all(
+      updates.map(({ id, position }) =>
+        supabase.from("spot_photos").update({ position }).eq("id", id),
+      ),
+    );
+    const failed = results.find((r) => r.error);
+    if (failed?.error) throw failed.error;
+  },
 };

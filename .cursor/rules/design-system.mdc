@@ -1,0 +1,79 @@
+---
+description: Tukka design system — tokens and component specs for all VibeMap UI
+globs: **/*.tsx
+alwaysApply: false
+---
+
+# Design System (Tukka)
+
+All UI must use the design tokens. **Never hardcode** hex colors, font sizes, font
+families, radii, or shadow values — import them from the token files below.
+
+- Colors: `constants/Colors.ts` (`Colors` light/dark, raw `Palette`)
+- Type: `constants/Typography.ts` (`FontFamily`, `Typography`)
+- Spacing / Radius / Elevation: `constants/Theme.ts`
+- Tag category colors: `constants/Tags.ts` (`TAG_COLORS`)
+
+Read the user's theme with `useColorScheme()` → `Colors.dark | Colors.light`, and
+color from `theme.*`. Use `Palette.*` only for fixed on-image colors (e.g. text on
+a photo) where the theme value does not apply.
+
+## When something is missing — ASK, do not guess
+
+If a component, state, or pattern is **not covered** by this rule or the token
+files, do not silently improvise. **Ask the user**: should I improvise within the
+design language, or will you add the component to the design system? Only proceed
+once they answer.
+
+## Tokens
+
+**Color** — Forest (structure/text) · Paper (surfaces) · Ochre (highlights) ·
+Plum (map pins & live selection) · semantic.
+- Primary action / text / active: Forest `#1C2A23` → `theme.accent` / `theme.text`
+- Surfaces: Paper `#FBFAF5` cards, `#F4F1E8` background → `theme.surface` / `theme.background`
+- Secondary text `#6F7D74` (`theme.textSecondary`), muted/meta `#9AA096` (`theme.textMuted`)
+- Ochre `#C9912F` + `#F7ECD6` soft → `theme.ochre` / `theme.ochreSubtle` (ratings, soft tags)
+- Plum `#6C3FD4` → `theme.plum` (map pins, selected state) — never as a button color
+- Semantic: success/open `#3F8A5F`, warning `#D9772E`, error/closed `#C0492F`, info `#3A6FB0`
+
+**Type** — Playfair Display (display/headings/place names), DM Sans (UI/body/labels),
+DM Mono (uppercase metadata). Always use a `FontFamily.*` or a `Typography.*` style;
+never `fontWeight` alone. Key styles: `display`, `heading1/2`, `title`, `placeName`,
+`cardTitle`, `body`, `label` (14/600), `secondary`, `meta` (mono uppercase), `chip`, `button`.
+
+**Spacing** `Spacing.space1..16` (4/8/12/16/24/32/48/64). **Radius** `Radius.sm|md|lg|xl|full`
+(6/10/16/24/999). **Elevation** `Elevation.flat|card|float|sheet`.
+
+## Component specs
+
+- **Buttons** — Primary: Forest bg, `Palette.paper100` text, `Radius` 14, `Typography.button`.
+  Secondary: Paper bg + 1.5px Forest border. Ghost: text-only, Forest (plum on press).
+  Icon: round (`Radius.full`).
+- **Tags / chips** — `Radius.full`. Selected = solid category color + paper text;
+  unselected = soft (color at low alpha) + color text. Use `components/ui/TagChip.tsx`.
+- **Inputs** — underline only: no fill, no radius, just a bottom border. Default 1px
+  `theme.border`; focused 2px `theme.accent`; error 2px `theme.error` with a trailing
+  `alert-circle` icon. Label on top in `Typography.label` / `theme.text` (not uppercase mono);
+  value `Typography.body` / `theme.text`; placeholder `theme.textMuted`. Inline error in
+  `theme.error`. Supports optional leading icon and a multi-line variant. Use `components/ui/Input.tsx`.
+- **Cards** — `theme.surface`, `Radius.lg`, `Elevation.card`, no border. Featured place/city
+  names in Playfair (`Typography.placeName`); meta line in `Typography.meta` or secondary.
+- **City/place cards** — image on top (top-rounded, `overflow:hidden`), paper footer with
+  Playfair name + `Country · N places` style meta.
+- **Tab bar** — Forest active, sage `theme.tabIconDefault` inactive, paper surface.
+- **Map pins** — Plum/category circle, paper border, `Elevation.float`; selected shows a
+  paper callout card.
+
+## Anti-patterns
+
+```tsx
+// ❌ BAD — hardcoded values
+<View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16 }}>
+  <Text style={{ fontSize: 18, fontWeight: '700' }}>Bar Botanica</Text>
+</View>
+
+// ✅ GOOD — tokens
+<View style={[{ backgroundColor: theme.surface, padding: Spacing.space4 }, Elevation.card]}>
+  <Text style={[Typography.placeName, { color: theme.text }]}>Bar Botanica</Text>
+</View>
+```

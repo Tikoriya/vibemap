@@ -1,6 +1,7 @@
-import { Platform, StyleSheet, View, ViewStyle } from 'react-native';
+import { StyleSheet, View, ViewStyle } from 'react-native';
 
 import { Colors } from '@/constants/Colors';
+import { Elevation, Radius } from '@/constants/Theme';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 type CardShadowProps = {
@@ -10,7 +11,7 @@ type CardShadowProps = {
 };
 
 export const CardShadow = (props: CardShadowProps) => {
-  const { children, style, radius = 16 } = props;
+  const { children, style, radius = Radius.lg } = props;
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const theme = isDark ? Colors.dark : Colors.light;
@@ -24,17 +25,7 @@ export const CardShadow = (props: CardShadowProps) => {
           backgroundColor: theme.surface,
           borderColor: theme.border,
         },
-        Platform.select({
-          ios: {
-            shadowColor: isDark ? '#000' : '#1A1714',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isDark ? 0.4 : 0.08,
-            shadowRadius: 8,
-          },
-          android: {
-            elevation: 3,
-          },
-        }),
+        Elevation.card,
         style,
       ]}
     >

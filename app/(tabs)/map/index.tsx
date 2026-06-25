@@ -12,7 +12,7 @@ export default function MapScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
       <View style={styles.container}>
         <Text style={[Typography.title, { color: theme.text }]}>Map</Text>
-        <Text style={[Typography.secondary, { color: theme.textSecondary }]}>
+        <Text style={[Typography.meta, { color: theme.textMuted }]}>
           Coming soon
         </Text>
       </View>

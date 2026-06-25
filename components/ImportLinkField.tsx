@@ -1,8 +1,10 @@
 import { Colors } from "@/constants/Colors";
-import { FontFamily, Typography } from "@/constants/Typography";
-import { ImportedSpot } from "@/lib/services/import";
+import { Spacing } from "@/constants/Theme";
+import { Typography } from "@/constants/Typography";
 import { useImportLink } from "@/hooks/useImportLink";
-import React, { useState } from "react";
+import { ImportedSpot } from "@/lib/services/import";
+import { AlertCircle } from "lucide-react-native";
+import { useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -15,11 +17,13 @@ import {
 
 type Props = {
   onImported: (spot: ImportedSpot) => void;
+  label?: string;
 };
 
 export const ImportLinkField = (props: Props) => {
-  const { onImported } = props;
+  const { onImported, label = "Import from link" } = props;
   const [url, setUrl] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
   const { importLink, isImporting, importError, resetImport } = useImportLink();
 
   const colorScheme = useColorScheme();
@@ -44,24 +48,33 @@ export const ImportLinkField = (props: Props) => {
   };
 
   const canImport = url.trim().length > 0 && !isImporting;
+  const isActive = !!importError || isFocused;
+  const borderColor = importError
+    ? theme.error
+    : isFocused
+      ? theme.accent
+      : theme.border;
 
   return (
     <View style={styles.container}>
+      {label ? (
+        <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
+      ) : null}
+
       <View
         style={[
           styles.row,
-          {
-            borderColor: importError ? "#D94F3D" : theme.border,
-            backgroundColor: theme.surface,
-          },
+          { borderBottomColor: borderColor, borderBottomWidth: isActive ? 2 : 1 },
         ]}
       >
         <TextInput
           style={[styles.input, { color: theme.text }]}
           placeholder="Paste a link to import a spot…"
-          placeholderTextColor={theme.textSecondary}
+          placeholderTextColor={theme.textMuted}
           value={url}
           onChangeText={handleChangeText}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="url"
@@ -74,29 +87,33 @@ export const ImportLinkField = (props: Props) => {
           <ActivityIndicator
             size="small"
             color={theme.accent}
-            style={styles.action}
+            style={styles.trailing}
           />
         ) : (
           <TouchableOpacity
             onPress={handleImport}
             disabled={!canImport}
             activeOpacity={0.7}
-            style={styles.action}
+            style={styles.trailing}
           >
             <Text
               style={[
                 styles.importButton,
-                { color: canImport ? theme.accent : theme.textSecondary },
+                { color: canImport ? theme.accent : theme.textMuted },
               ]}
             >
               Import
             </Text>
           </TouchableOpacity>
         )}
+
+        {importError ? (
+          <AlertCircle size={18} color={theme.error} style={styles.trailing} />
+        ) : null}
       </View>
 
       {importError ? (
-        <Text style={styles.errorText}>{importError}</Text>
+        <Text style={[styles.error, { color: theme.error }]}>{importError}</Text>
       ) : null}
     </View>
   );
@@ -104,30 +121,28 @@ export const ImportLinkField = (props: Props) => {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 6,
+    gap: Spacing.space2,
+  },
+  label: {
+    ...Typography.label,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 16,
+    paddingVertical: Spacing.space2,
   },
   input: {
+    ...Typography.body,
     flex: 1,
-    fontFamily: FontFamily.regular,
-    fontSize: 15,
-    paddingVertical: 14,
+    padding: 0,
   },
-  action: {
-    marginLeft: 8,
+  trailing: {
+    marginLeft: Spacing.space2,
   },
   importButton: {
     ...Typography.button,
   },
-  errorText: {
+  error: {
     ...Typography.secondary,
-    color: "#D94F3D",
-    marginLeft: 4,
   },
 });

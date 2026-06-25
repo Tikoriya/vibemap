@@ -1,7 +1,9 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { Palette } from '@/constants/Colors';
 import { TAG_COLORS, TagCategory } from '@/constants/Tags';
-import { Typography } from '@/constants/Typography';
+import { FontFamily, Typography } from '@/constants/Typography';
+import { Radius } from '@/constants/Theme';
 
 type TagChipProps = {
   label: string;
@@ -16,23 +18,21 @@ export const TagChip = (props: TagChipProps) => {
   const chipColor = color ?? (category ? TAG_COLORS[category] : TAG_COLORS.custom);
 
   const Container = onPress ? TouchableOpacity : View;
-  const containerProps = onPress
-    ? { onPress, activeOpacity: 0.75 }
-    : {};
+  const containerProps = onPress ? { onPress, activeOpacity: 0.75 } : {};
 
   return (
     <Container
       style={[
         styles.chip,
-        { backgroundColor: isActive ? chipColor : `${chipColor}22` },
+        // Solid (selected) vs soft fill, per the design's tag states.
+        isActive
+          ? { backgroundColor: chipColor }
+          : { backgroundColor: `${chipColor}1F` },
       ]}
       {...containerProps}
     >
       <Text
-        style={[
-          styles.label,
-          { color: isActive ? '#FFFFFF' : chipColor },
-        ]}
+        style={[styles.label, { color: isActive ? Palette.paper100 : chipColor }]}
         numberOfLines={1}
       >
         {label}
@@ -43,12 +43,13 @@ export const TagChip = (props: TagChipProps) => {
 
 const styles = StyleSheet.create({
   chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: Radius.full,
     alignSelf: 'flex-start',
   },
   label: {
     ...Typography.chip,
+    fontFamily: FontFamily.semiBold,
   },
 });

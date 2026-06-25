@@ -1,6 +1,8 @@
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-import { Colors } from "@/constants/Colors";
+import { Colors, Palette } from "@/constants/Colors";
+import { FontFamily } from "@/constants/Typography";
+import { Radius } from "@/constants/Theme";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { useAuthStore } from "@/lib/store";
 import { authApi } from "@/lib/supabase/auth";
@@ -94,19 +96,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   avatarInitial: {
+    fontFamily: FontFamily.serifSemiBold,
     fontSize: 32,
-    fontWeight: "700",
   },
   name: {
-    fontSize: 20,
-    fontWeight: "700",
+    fontFamily: FontFamily.serifSemiBold,
+    fontSize: 24,
     marginBottom: 4,
   },
   email: {
+    fontFamily: FontFamily.regular,
     fontSize: 14,
   },
   section: {
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     borderWidth: 1,
     marginBottom: 24,
     overflow: "hidden",
@@ -119,21 +122,22 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   rowLabel: {
+    fontFamily: FontFamily.regular,
     fontSize: 15,
   },
   rowValue: {
+    fontFamily: FontFamily.medium,
     fontSize: 15,
-    fontWeight: "500",
   },
   logoutButton: {
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
   },
   logoutText: {
+    fontFamily: FontFamily.semiBold,
     fontSize: 15,
-    fontWeight: "600",
-    color: "#C4572A",
+    color: Palette.closed,
   },
 });

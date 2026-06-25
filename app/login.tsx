@@ -13,6 +13,8 @@ import {
 } from "react-native";
 
 import { authApi } from "@/lib/supabase/auth";
+import { Palette } from "@/constants/Colors";
+import { FontFamily } from "@/constants/Typography";
 
 type AuthStep = "default" | "email" | "sent";
 
@@ -161,7 +163,7 @@ export default function AuthScreen() {
           <TextInput
             style={styles.input}
             placeholder="Email address"
-            placeholderTextColor="#8C8078"
+            placeholderTextColor={Palette.subtleText}
             autoCapitalize="none"
             keyboardType="email-address"
             autoFocus
@@ -173,7 +175,7 @@ export default function AuthScreen() {
           <TextInput
             style={styles.input}
             placeholder="Password (optional — for magic link leave blank)"
-            placeholderTextColor="#8C8078"
+            placeholderTextColor={Palette.subtleText}
             secureTextEntry
             returnKeyType="done"
             value={password}
@@ -254,7 +256,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F7F4F0",
+    backgroundColor: Palette.paper100,
     justifyContent: "center",
     paddingHorizontal: 32,
   },
@@ -263,18 +265,19 @@ const styles = StyleSheet.create({
     marginBottom: 56,
   },
   logoText: {
-    fontSize: 36,
-    fontWeight: "700",
-    color: "#1A1714",
+    fontFamily: FontFamily.serifBold,
+    fontSize: 44,
+    color: Palette.forest800,
     letterSpacing: -0.5,
     marginBottom: 8,
   },
   tagline: {
-    fontSize: 15,
-    color: "#8C8078",
+    fontFamily: FontFamily.serifMediumItalic,
+    fontSize: 16,
+    color: Palette.subtleText,
     textAlign: "center",
     lineHeight: 22,
-    maxWidth: 260,
+    maxWidth: 280,
   },
   authSection: {
     width: "100%",
@@ -288,17 +291,17 @@ const styles = StyleSheet.create({
   googleButton: {
     width: "100%",
     height: 52,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    backgroundColor: Palette.paper0,
+    borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: "#E5E0D8",
+    borderColor: Palette.cardBorder,
     justifyContent: "center",
     alignItems: "center",
   },
   googleButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1A1714",
+    fontFamily: FontFamily.semiBold,
+    fontSize: 15,
+    color: Palette.forest800,
   },
   dividerRow: {
     flexDirection: "row",
@@ -310,77 +313,81 @@ const styles = StyleSheet.create({
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: "#E5E0D8",
+    backgroundColor: Palette.paper300,
   },
   dividerText: {
-    fontSize: 13,
-    color: "#8C8078",
+    fontFamily: FontFamily.monoMedium,
+    fontSize: 12,
+    letterSpacing: 1.2,
+    color: Palette.muted,
   },
   emailButton: {
     width: "100%",
     height: 52,
-    borderRadius: 12,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
   },
   emailButtonText: {
+    fontFamily: FontFamily.medium,
     fontSize: 15,
-    fontWeight: "500",
-    color: "#8C8078",
+    color: Palette.subtleText,
   },
   input: {
     width: "100%",
     height: 52,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    backgroundColor: Palette.paper0,
+    borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: "#E5E0D8",
+    borderColor: Palette.cardBorder,
     paddingHorizontal: 16,
+    fontFamily: FontFamily.regular,
     fontSize: 16,
-    color: "#1A1714",
+    color: Palette.forest800,
   },
   primaryButton: {
     width: "100%",
     height: 52,
-    backgroundColor: "#C4703A",
-    borderRadius: 12,
+    backgroundColor: Palette.forest800,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
   },
   secondaryButton: {
     width: "100%",
     height: 52,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    backgroundColor: Palette.paper0,
+    borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: "#E5E0D8",
+    borderColor: Palette.cardBorder,
     justifyContent: "center",
     alignItems: "center",
   },
   secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1A1714",
+    fontFamily: FontFamily.semiBold,
+    fontSize: 15,
+    color: Palette.forest800,
   },
   buttonDisabled: {
     opacity: 0.5,
   },
   primaryButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#FFFFFF",
+    fontFamily: FontFamily.semiBold,
+    fontSize: 15,
+    color: Palette.paper100,
   },
   backButton: {
     paddingVertical: 8,
   },
   backText: {
+    fontFamily: FontFamily.regular,
     fontSize: 14,
-    color: "#8C8078",
+    color: Palette.subtleText,
   },
   sentIconContainer: {
     width: 72,
     height: 72,
-    backgroundColor: "#F0E0D4",
+    backgroundColor: Palette.ochre50,
     borderRadius: 36,
     justifyContent: "center",
     alignItems: "center",
@@ -390,21 +397,22 @@ const styles = StyleSheet.create({
     fontSize: 32,
   },
   sentTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#1A1714",
+    fontFamily: FontFamily.serifSemiBold,
+    fontSize: 24,
+    color: Palette.forest800,
     marginBottom: 12,
   },
   sentBody: {
+    fontFamily: FontFamily.regular,
     fontSize: 15,
-    color: "#8C8078",
+    color: Palette.subtleText,
     textAlign: "center",
     lineHeight: 24,
     marginBottom: 8,
   },
   sentEmail: {
-    color: "#1A1714",
-    fontWeight: "600",
+    fontFamily: FontFamily.semiBold,
+    color: Palette.forest800,
   },
   devButton: {
     position: "absolute",
@@ -415,12 +423,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: "#C4703A",
+    borderColor: Palette.ochre500,
   },
   devButtonText: {
+    fontFamily: FontFamily.semiBold,
     fontSize: 12,
-    fontWeight: "600",
-    color: "#C4703A",
+    color: Palette.ochre500,
     letterSpacing: 0.5,
   },
 });

@@ -1,4 +1,5 @@
-import { Colors } from "@/constants/Colors";
+import { Colors, Palette } from "@/constants/Colors";
+import { Radius } from "@/constants/Theme";
 import { FontFamily } from "@/constants/Typography";
 import { useRef, useState } from "react";
 import {
@@ -125,28 +126,28 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 20,
-    paddingLeft: 12,
-    paddingRight: 8,
-    paddingVertical: 5,
+    borderRadius: Radius.full,
+    paddingLeft: 14,
+    paddingRight: 9,
+    paddingVertical: 7,
     gap: 4,
   },
   chipLabel: {
-    fontFamily: FontFamily.medium,
+    fontFamily: FontFamily.semiBold,
     fontSize: 13,
-    color: "#FFFFFF",
+    color: Palette.paper100,
   },
   chipRemove: {
     fontFamily: FontFamily.regular,
     fontSize: 17,
     lineHeight: 20,
-    color: "rgba(255,255,255,0.75)",
+    color: "rgba(244,241,232,0.75)",
   },
   activeChip: {
     borderWidth: 1.5,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    borderRadius: Radius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
   },
   activeChipInput: {
     fontFamily: FontFamily.medium,

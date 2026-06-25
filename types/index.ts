@@ -1,7 +1,10 @@
 import { Database } from "./supabase";
 
 export type City = Database['public']['Tables']['cities']['Row'];
-export type Spot = Database['public']['Tables']['spots']['Row'] & {tags?: Tag[]};
+export type Spot = Database['public']['Tables']['spots']['Row'] & {
+  tags?: Tag[];
+  spot_photos?: Pick<SpotPhoto, 'url' | 'position'>[];
+};
 export type Tag = Database['public']['Tables']['tags']['Row'];
 export type SpotPhoto = Database['public']['Tables']['spot_photos']['Row'];
 

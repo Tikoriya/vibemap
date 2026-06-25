@@ -6,7 +6,7 @@ export const spotsApi = {
     fetchSpots: async (cityId: number): Promise<Spot[]> => {
         const { data, error } = await supabase
         .from("spots")
-        .select("*, tags:tags(*)")
+        .select("*, tags:tags(*), spot_photos(url, position)")
         .eq("city_id", cityId)
         .order("created_at", { ascending: false });
     

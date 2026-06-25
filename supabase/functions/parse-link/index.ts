@@ -141,22 +141,56 @@ function isGoogleMapsUrl(url: string): boolean {
   }
 }
 
+// Google rewrites search URLs (especially when fetched from a datacenter IP) into
+// opaque reference tokens — e.g. q=EhAqBdAU... or a 0x..:0x.. CID, or bare lat,lng.
+// None of these are human-readable and Places Text Search cannot resolve them, so we
+// must reject them and fall back to a readable signal.
+function looksLikeOpaqueToken(value: string): boolean {
+  const v = value.trim();
+  if (!v) return true;
+  // Hex CID form: 0x123abc:0x456def
+  if (/^0x[0-9a-f]+:0x[0-9a-f]+$/i.test(v)) return true;
+  // Bare coordinates "48.8584,2.2945" — a location, not a name
+  if (/^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/.test(v)) return true;
+  // Long, space-free base64url-ish blob (the EhAq... reference tokens)
+  if (!/\s/.test(v) && v.length >= 24 && /^[A-Za-z0-9_+\-/=]+$/.test(v)) return true;
+  return false;
+}
+
 function extractGoogleMapsHints(url: string): string {
   try {
     const u = new URL(url);
 
-    // https://maps.google.com/?q=Name+of+Place
-    // https://www.google.com/maps?q=Name+of+Place
-    const q = u.searchParams.get("q");
-    if (q) return q;
-
+    // Readable place path is the most reliable signal:
     // https://www.google.com/maps/place/Name/@lat,lng,...
     const placeMatch = u.pathname.match(/\/maps\/place\/([^/@]+)/);
-    if (placeMatch) return decodeURIComponent(placeMatch[1].replace(/\+/g, " "));
+    if (placeMatch) {
+      const name = decodeURIComponent(placeMatch[1].replace(/\+/g, " ")).trim();
+      if (name && !looksLikeOpaqueToken(name)) return name;
+    }
 
     // https://www.google.com/maps/search/Name+of+Place/...
-    const searchMatch = u.pathname.match(/\/maps\/search\/([^/]+)/);
-    if (searchMatch) return decodeURIComponent(searchMatch[1].replace(/\+/g, " "));
+    const searchMatch = u.pathname.match(/\/maps\/search\/([^/@]+)/);
+    if (searchMatch) {
+      const name = decodeURIComponent(searchMatch[1].replace(/\+/g, " ")).trim();
+      if (name && !looksLikeOpaqueToken(name)) return name;
+    }
+
+    // https://maps.google.com/?q=Name+of+Place — checked last because this is the
+    // param Google most often replaces with an opaque token.
+    const q = u.searchParams.get("q");
+    if (q) {
+      const name = q.trim();
+      if (name && !looksLikeOpaqueToken(name)) return name;
+    }
+
+    // Anti-bot interstitials (google.com/sorry, consent.google.com) wrap the real
+    // destination in a ?continue= param — unwrap it and extract from there.
+    const cont = u.searchParams.get("continue");
+    if (cont) {
+      const inner = extractGoogleMapsHints(cont);
+      if (inner) return inner;
+    }
   } catch {
     // ignore
   }
@@ -171,6 +205,20 @@ type GeminiPlace = {
   city: string;
   hints: string;
 };
+
+// Retry transient Gemini failures (503 overloaded, 429 rate-limited) with backoff.
+async function fetchGeminiWithRetry(
+  url: string,
+  init: RequestInit,
+  attempts = 3,
+): Promise<Response> {
+  let res = await fetch(url, init);
+  for (let i = 1; i < attempts && (res.status === 503 || res.status === 429); i++) {
+    await new Promise((r) => setTimeout(r, 500 * 2 ** (i - 1)));
+    res = await fetch(url, init);
+  }
+  return res;
+}
 
 async function extractWithGemini(
   pageText: string,
@@ -191,8 +239,11 @@ If there is no identifiable place in the text, return:
 Text:
 ${pageText.slice(0, 2000)}`;
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+  // gemini-2.5-flash-lite: highest free-tier limits (30 RPM / ~1k+ RPD / 1M TPM),
+  // ample for this tiny extraction task. The free tier is best-effort and returns
+  // 503 (overloaded) / 429 (rate-limited) intermittently, so retry with backoff.
+  const res = await fetchGeminiWithRetry(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -337,9 +388,11 @@ Deno.serve(async (req: Request) => {
     startUrl = await resolveRedirectManually(rawUrl);
   }
 
-  // --- Step 2: fast path for Google Maps — extract place name straight from the final URL ---
+  // --- Step 2: fast path for Google Maps — extract place name straight from the URL ---
+  // Prefer the ORIGINAL url: its q=/place/ values are human-readable. The redirect-
+  // resolved url is often rewritten by Google into an opaque token, so it comes second.
   const googleMapsHint =
-    extractGoogleMapsHints(startUrl) || extractGoogleMapsHints(rawUrl);
+    extractGoogleMapsHints(rawUrl) || extractGoogleMapsHints(startUrl);
 
   // --- Step 3: fetch the page for og: tags (also captures any remaining redirect) ---
   let meta: PageMeta;

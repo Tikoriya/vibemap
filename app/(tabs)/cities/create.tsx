@@ -1,3 +1,4 @@
+import { AlertCircle, X } from "lucide-react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
@@ -10,27 +11,36 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Colors } from "@/constants/Colors";
-import { FontFamily, Typography } from "@/constants/Typography";
+import { Input } from "@/components/ui/Input";
+import { Colors, Palette } from "@/constants/Colors";
+import { Radius, Spacing } from "@/constants/Theme";
+import { Typography } from "@/constants/Typography";
 import { useCities } from "@/hooks/useCities";
+import googleApi from "@/lib/services/google";
 import { unsplashService } from "@/lib/services/unsplash";
 import { useAuthStore } from "@/lib/store";
 
 const CITY_GRADIENTS: [string, string][] = [
-  ["#C4572A", "#E8965A"],
-  ["#5B7FA8", "#A8C5D8"],
-  ["#4A7C59", "#85B89A"],
-  ["#8B6FAD", "#C4A8E0"],
-  ["#8B5E3C", "#C49060"],
-  ["#2D3A5E", "#5B7FA8"],
+  ["#2B3D34", "#3C4F44"],
+  ["#3A4F44", "#6F8378"],
+  ["#1C2A23", "#3A4F44"],
+  ["#33453B", "#3C4F44"],
+  ["#2B3D34", "#6F8378"],
+  ["#14201A", "#2B3D34"],
 ];
+
+// Dark forest scrim layered over the photo so the form stays legible.
+const SCRIM_COLORS = [
+  "rgba(20,32,26,0.1)",
+  "rgba(20,32,26,0.55)",
+  "rgba(20,32,26,0.94)",
+] as const;
 
 function gradientForName(name: string): [string, string] {
   if (!name) return CITY_GRADIENTS[0];
@@ -39,10 +49,16 @@ function gradientForName(name: string): [string, string] {
 
 export default function CreateCityScreen() {
   const [name, setName] = useState("");
-  const [suggestedPhotoUrl, setSuggestedPhotoUrl] = useState<string | null>(null);
+  const [country, setCountry] = useState("");
+  const [countryEdited, setCountryEdited] = useState(false);
+  const [suggestedPhotoUrl, setSuggestedPhotoUrl] = useState<string | null>(
+    null,
+  );
   const [photoPage, setPhotoPage] = useState(1);
   const [userPhotoUri, setUserPhotoUri] = useState<string | null>(null);
   const [isFetchingPhoto, setIsFetchingPhoto] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -55,29 +71,65 @@ export default function CreateCityScreen() {
 
   const activePhotoUrl = userPhotoUri ?? suggestedPhotoUrl;
   const gradient = gradientForName(name);
+  const showSpinner = isFetchingPhoto || isImageLoading;
 
   const fetchPhoto = useCallback(async (query: string, page: number) => {
     setIsFetchingPhoto(true);
+    setPhotoError(null);
     try {
       const photo = await unsplashService.searchCityPhoto(query, page);
-      setSuggestedPhotoUrl(photo?.urls.regular ?? null);
+      if (photo?.urls.regular) {
+        setSuggestedPhotoUrl(photo.urls.regular);
+      } else {
+        setSuggestedPhotoUrl(null);
+        setPhotoError("No photo found — a color will be used instead.");
+      }
+    } catch (error) {
+      setSuggestedPhotoUrl(null);
+      setPhotoError(
+        error instanceof Error
+          ? error.message
+          : "Could not load a photo. Please try again.",
+      );
     } finally {
       setIsFetchingPhoto(false);
     }
   }, []);
 
-  const handleNameChange = useCallback((text: string) => {
-    setName(text);
-    setUserPhotoUri(null);
-    setSuggestedPhotoUrl(null);
-    setPhotoPage(1);
+  // Only auto-fills country while the user hasn't typed their own value.
+  const suggestCountry = useCallback(
+    async (query: string) => {
+      if (countryEdited) return;
+      const resolved = await googleApi.getCountryForCity(query);
+      if (resolved && !countryEdited) setCountry(resolved);
+    },
+    [countryEdited],
+  );
 
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+  const handleNameChange = useCallback(
+    (text: string) => {
+      setName(text);
+      setUserPhotoUri(null);
+      setSuggestedPhotoUrl(null);
+      setPhotoError(null);
+      setPhotoPage(1);
 
-    if (text.trim().length < 2) return;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    debounceRef.current = setTimeout(() => fetchPhoto(text.trim(), 1), 600);
-  }, [fetchPhoto]);
+      if (text.trim().length < 2) return;
+
+      debounceRef.current = setTimeout(() => {
+        fetchPhoto(text.trim(), 1);
+        suggestCountry(text.trim());
+      }, 600);
+    },
+    [fetchPhoto, suggestCountry],
+  );
+
+  const handleCountryChange = useCallback((text: string) => {
+    setCountry(text);
+    setCountryEdited(true);
+  }, []);
 
   const handleTryAnother = () => {
     if (!name.trim() || isFetchingPhoto) return;
@@ -105,6 +157,7 @@ export default function CreateCityScreen() {
     });
 
     if (!result.canceled) {
+      setPhotoError(null);
       setUserPhotoUri(result.assets[0].uri);
     }
   };
@@ -115,6 +168,7 @@ export default function CreateCityScreen() {
     try {
       await createCity({
         name: name.trim(),
+        country: country.trim() || null,
         imageUrl: activePhotoUrl ?? null,
         user_id: user?.id,
       });
@@ -127,163 +181,235 @@ export default function CreateCityScreen() {
   };
 
   const canSave = name.trim().length > 0 && !isSaving;
+  const introCopy = userPhotoUri
+    ? "You're using a photo from your library."
+    : "Start typing a city and we'll find a fitting photo automatically.";
 
   return (
-    <SafeAreaView
-      style={[styles.safe, { backgroundColor: theme.background }]}
-      edges={["bottom"]}
-    >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        {/* Photo preview */}
-        <View style={styles.photoContainer}>
-          {activePhotoUrl ? (
-            <Image
-              source={{ uri: activePhotoUrl }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-            />
-          ) : (
-            <LinearGradient colors={gradient} style={StyleSheet.absoluteFill} />
-          )}
+    <View style={styles.root}>
+      {activePhotoUrl ? (
+        <Image
+          source={{ uri: activePhotoUrl }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={250}
+          onLoadStart={() => setIsImageLoading(true)}
+          onLoad={() => setIsImageLoading(false)}
+          onError={() => {
+            setIsImageLoading(false);
+            setPhotoError("Could not load the photo. Please try again.");
+          }}
+        />
+      ) : (
+        <LinearGradient
+          colors={gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
 
-          {isFetchingPhoto && (
-            <View style={styles.photoLoader}>
-              <ActivityIndicator color="#FFFFFF" />
-            </View>
-          )}
+      <LinearGradient
+        colors={SCRIM_COLORS}
+        locations={[0, 0.45, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
 
-          {activePhotoUrl && !isFetchingPhoto && (
-            <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.45)"]}
-              style={StyleSheet.absoluteFill}
-            />
-          )}
+      {showSpinner ? (
+        <View style={styles.loaderOverlay} pointerEvents="none">
+          <ActivityIndicator size="large" color={Palette.paper0} />
         </View>
+      ) : null}
 
-        {/* Photo actions */}
-        <View style={styles.photoActions}>
-          {suggestedPhotoUrl !== null && userPhotoUri === null && (
-            <TouchableOpacity
-              onPress={handleTryAnother}
-              disabled={isFetchingPhoto}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.photoActionText, { color: theme.textSecondary }]}>
-                Try another
-              </Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={handlePickFromLibrary} activeOpacity={0.7}>
-            <Text style={[styles.photoActionText, { color: theme.accent }]}>
-              {userPhotoUri ? "Change photo" : "Choose from library"}
-            </Text>
+      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => router.back()}
+            activeOpacity={0.8}
+            hitSlop={8}
+          >
+            <X size={22} color={Palette.paper0} />
           </TouchableOpacity>
         </View>
 
-        {/* Form */}
-        <View style={[styles.form, { borderTopColor: theme.border }]}>
-          <Text style={[styles.label, { color: theme.textSecondary }]}>
-            City name
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              {
-                color: theme.text,
-                borderColor: theme.border,
-                backgroundColor: theme.surface,
-              },
-            ]}
-            placeholder="e.g. Tokyo, Paris, New York"
-            placeholderTextColor={theme.textSecondary}
-            value={name}
-            onChangeText={handleNameChange}
-            autoFocus
-            autoCapitalize="words"
-            returnKeyType="done"
-            onSubmitEditing={handleSave}
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.saveButton,
-            { backgroundColor: canSave ? theme.accent : theme.border },
-          ]}
-          onPress={handleSave}
-          disabled={!canSave}
-          activeOpacity={0.85}
+        <KeyboardAvoidingView
+          style={styles.fill}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          {isSaving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={[Typography.button, styles.saveButtonText]}>
-              Save city
-            </Text>
-          )}
-        </TouchableOpacity>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          <View style={styles.body}>
+            <View style={styles.topSpacer} />
+
+            <View style={styles.intro}>
+              <Text style={styles.introText}>{introCopy}</Text>
+
+              {photoError ? (
+                <View style={styles.noticeRow}>
+                  <AlertCircle size={14} color={Palette.paper0} />
+                  <Text style={styles.noticeText}>{photoError}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.tertiaryRow}>
+                {suggestedPhotoUrl && !userPhotoUri ? (
+                  <TouchableOpacity
+                    onPress={handleTryAnother}
+                    disabled={isFetchingPhoto}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.tertiaryMuted}>Try another</Text>
+                  </TouchableOpacity>
+                ) : null}
+
+                <TouchableOpacity
+                  onPress={handlePickFromLibrary}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.tertiary}>
+                    {userPhotoUri ? "Change photo" : "Choose from library"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.bottomSpacer} />
+
+            <View style={styles.form}>
+              <Input
+                tone="onImage"
+                label="City name"
+                placeholder="e.g. Tokyo, Paris, New York"
+                value={name}
+                onChangeText={handleNameChange}
+                autoCapitalize="words"
+                returnKeyType="next"
+              />
+
+              <Input
+                tone="onImage"
+                label="Country"
+                containerStyle={styles.countryField}
+                placeholder="e.g. Japan, France, USA"
+                value={country}
+                onChangeText={handleCountryChange}
+                autoCapitalize="words"
+                returnKeyType="done"
+                onSubmitEditing={handleSave}
+              />
+
+              <TouchableOpacity
+                style={[
+                  styles.createButton,
+                  !canSave && styles.createButtonDisabled,
+                ]}
+                onPress={handleSave}
+                disabled={!canSave}
+                activeOpacity={0.9}
+              >
+                {isSaving ? (
+                  <ActivityIndicator color={theme.accent} />
+                ) : (
+                  <Text style={[Typography.button, styles.createButtonText]}>
+                    Create city
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Palette.ink900,
+  },
+  fill: {
+    flex: 1,
+  },
+  topSpacer: {
+    flex: 0.1,
+  },
+  bottomSpacer: {
+    flex: 1,
+  },
+  loaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   safe: {
     flex: 1,
   },
-  photoContainer: {
-    width: "100%",
-    aspectRatio: 16 / 9,
-    overflow: "hidden",
-  },
-  photoLoader: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  photoActions: {
+  topBar: {
     flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: Spacing.space4,
+    paddingTop: Spacing.space2,
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.full,
+    backgroundColor: "rgba(20,32,26,0.4)",
     justifyContent: "center",
     alignItems: "center",
-    gap: 24,
-    paddingVertical: 12,
   },
-  photoActionText: {
-    fontFamily: FontFamily.medium,
-    fontSize: 14,
+  body: {
+    flex: 1,
+    paddingHorizontal: Spacing.space4,
+  },
+  intro: {
+    gap: Spacing.space3,
+  },
+  introText: {
+    ...Typography.body,
+    color: Palette.paper0,
+  },
+  noticeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.space2,
+  },
+  noticeText: {
+    ...Typography.secondary,
+    color: Palette.paper0,
+    flexShrink: 1,
+  },
+  tertiaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.space6,
+  },
+  tertiary: {
+    ...Typography.label,
+    color: Palette.paper0,
+  },
+  tertiaryMuted: {
+    ...Typography.label,
+    color: Palette.paper300,
   },
   form: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingBottom: Spacing.space2,
   },
-  label: {
-    fontFamily: FontFamily.medium,
-    fontSize: 11,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    marginBottom: 8,
+  countryField: {
+    marginTop: Spacing.space4,
   },
-  input: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 22,
-    borderWidth: 1,
+  createButton: {
+    marginTop: Spacing.space6,
     borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  saveButton: {
-    marginHorizontal: 16,
-    marginTop: 20,
-    borderRadius: 16,
-    paddingVertical: 16,
+    paddingVertical: Spacing.space4,
     alignItems: "center",
+    backgroundColor: Palette.paper0,
   },
-  saveButtonText: {
-    color: "#FFFFFF",
+  createButtonDisabled: {
+    backgroundColor: "rgba(251,250,245,0.4)",
+  },
+  createButtonText: {
+    color: Palette.forest800,
   },
 });

@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       cities: {
         Row: {
+          country: string | null
           created_at: string
           id: number
           imageUrl: string | null
@@ -18,6 +19,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          country?: string | null
           created_at?: string
           id?: number
           imageUrl?: string | null
@@ -25,6 +27,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          country?: string | null
           created_at?: string
           id?: number
           imageUrl?: string | null

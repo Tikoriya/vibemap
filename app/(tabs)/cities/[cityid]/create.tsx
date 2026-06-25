@@ -1,8 +1,12 @@
 import { PlacesAutocompleteField } from "@/components/GoogleAutoComplete";
 import { ImportedPhotos } from "@/components/ImportedPhotos";
 import { ImportLinkField } from "@/components/ImportLinkField";
-import { TagInput } from "@/components/TagInput";
-import { Colors } from "@/constants/Colors";
+import { TagPicker } from "@/components/TagPicker";
+import { Input } from "@/components/ui/Input";
+import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
+import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
+import { Colors, Palette } from "@/constants/Colors";
+import { Radius, Spacing } from "@/constants/Theme";
 import { FontFamily, Typography } from "@/constants/Typography";
 import { useCreateTag } from "@/hooks/useCreateTag";
 import { useSpot } from "@/hooks/useSpot";
@@ -14,6 +18,7 @@ import { tagsSpotsApi } from "@/lib/supabase/tags_spots";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { RotateCcw } from "lucide-react-native";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -24,7 +29,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   useColorScheme,
   View,
@@ -35,6 +39,13 @@ type CreateSpotRouteParams = {
   cityid: string;
 };
 
+type SpotTab = "manual" | "import";
+
+const SPOT_TABS: { key: SpotTab; label: string }[] = [
+  { key: "manual", label: "Add Spot" },
+  { key: "import", label: "Import from link" },
+];
+
 export default function CreateSpotScreen() {
   const router = useRouter();
   const { cityid } = useLocalSearchParams<CreateSpotRouteParams>();
@@ -43,7 +54,11 @@ export default function CreateSpotScreen() {
   const { mutateAsync: createTags } = useCreateTag();
   const queryClient = useQueryClient();
 
+  const [activeTab, setActiveTab] = useState<SpotTab>("manual");
   const [tagLabels, setTagLabels] = useState<string[]>([]);
+  const [importedName, setImportedName] = useState<string | undefined>(
+    undefined,
+  );
   const [importedAddress, setImportedAddress] = useState<string | undefined>(
     undefined,
   );
@@ -52,6 +67,7 @@ export default function CreateSpotScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const theme = isDark ? Colors.dark : Colors.light;
+  const tabBarPadding = useBottomTabOverflow();
 
   const {
     control,
@@ -68,6 +84,16 @@ export default function CreateSpotScreen() {
       notes: "",
     },
   });
+
+  const handleResetImport = () => {
+    setImportedName(undefined);
+    setImportedAddress(undefined);
+    setImportedPhotos([]);
+    setValue("name", "", { shouldValidate: false });
+    setValue("address", "", { shouldValidate: false });
+    setValue("latitude", 0);
+    setValue("longitude", 0);
+  };
 
   const onSubmit = async (values: SpotFormValues) => {
     try {
@@ -140,135 +166,144 @@ export default function CreateSpotScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: 24 + tabBarPadding },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           style={{ flex: 1 }}
         >
-          {/* Import from link */}
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecondary }]}>
-              Import from link
-            </Text>
-            <ImportLinkField
-              onImported={(spot) => {
-                setValue("name", spot.name, { shouldValidate: true });
-                setValue("address", spot.address, { shouldValidate: true });
-                setValue("latitude", spot.latitude);
-                setValue("longitude", spot.longitude);
-                setImportedAddress(spot.address);
-                setImportedPhotos(spot.photos ?? []);
-              }}
-            />
-            <ImportedPhotos
-              photos={importedPhotos}
-              onRemove={(url) =>
-                setImportedPhotos((prev) => prev.filter((p) => p !== url))
-              }
-            />
-          </View>
+          {/* Tab switcher */}
+          <SegmentedTabs
+            tabs={SPOT_TABS}
+            value={activeTab}
+            onChange={setActiveTab}
+          />
 
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View
-              style={[styles.dividerLine, { backgroundColor: theme.border }]}
-            />
-            <Text style={[styles.dividerText, { color: theme.textSecondary }]}>
-              OR
-            </Text>
-            <View
-              style={[styles.dividerLine, { backgroundColor: theme.border }]}
-            />
-          </View>
+          {/* Manual entry */}
+          {activeTab === "manual" ? (
+            <>
+              {/* Name */}
+              <View style={styles.field}>
+                <Controller
+                  control={control}
+                  name="name"
+                  render={({ field: { onChange, onBlur, value } }) => (
+                    <Input
+                      label="Name"
+                      error={errors.name?.message}
+                      placeholder="e.g. Café Central, Neni am Naschmarkt"
+                      value={value}
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      autoCapitalize="words"
+                      returnKeyType="next"
+                    />
+                  )}
+                />
+              </View>
 
-          {/* Address — Google Places autocomplete */}
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecondary }]}>
-              Location
-            </Text>
-            <Controller
-              control={control}
-              name="address"
-              render={() => (
-                <PlacesAutocompleteField
-                  error={errors.address?.message}
-                  prefillValue={importedAddress}
-                  onPlaceSelected={(place) => {
-                    setValue("address", place.address, {
-                      shouldValidate: true,
-                    });
-                    setValue("latitude", place.latitude);
-                    setValue("longitude", place.longitude);
-                    if (!control._formValues.name) {
-                      setValue("name", place.name);
+              {/* Location — Google Places autocomplete */}
+              <View style={styles.field}>
+                <Controller
+                  control={control}
+                  name="address"
+                  render={() => (
+                    <PlacesAutocompleteField
+                      error={errors.address?.message}
+                      prefillValue={importedAddress}
+                      onPlaceSelected={(place) => {
+                        setValue("address", place.address, {
+                          shouldValidate: true,
+                        });
+                        setValue("latitude", place.latitude);
+                        setValue("longitude", place.longitude);
+                        if (!control._formValues.name) {
+                          setValue("name", place.name);
+                        }
+                      }}
+                    />
+                  )}
+                />
+              </View>
+            </>
+          ) : (
+            /* Import from link */
+            <View style={styles.field}>
+              {importedName ? (
+                <View
+                  style={[
+                    styles.importedCard,
+                    { backgroundColor: theme.surface, borderColor: theme.border },
+                  ]}
+                >
+                  <View style={styles.importedHeader}>
+                    <Text
+                      style={[styles.importedName, { color: theme.text }]}
+                      numberOfLines={2}
+                    >
+                      {importedName}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={handleResetImport}
+                      activeOpacity={0.7}
+                      hitSlop={8}
+                      style={styles.importedReset}
+                    >
+                      <RotateCcw size={18} color={theme.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                  {importedAddress ? (
+                    <Text
+                      style={[
+                        styles.importedAddress,
+                        { color: theme.textSecondary },
+                      ]}
+                    >
+                      {importedAddress}
+                    </Text>
+                  ) : null}
+                  <ImportedPhotos
+                    photos={importedPhotos}
+                    onRemove={(url) =>
+                      setImportedPhotos((prev) =>
+                        prev.filter((p) => p !== url),
+                      )
                     }
+                  />
+                </View>
+              ) : (
+                <ImportLinkField
+                  onImported={(spot) => {
+                    setValue("name", spot.name, { shouldValidate: true });
+                    setValue("address", spot.address, { shouldValidate: true });
+                    setValue("latitude", spot.latitude);
+                    setValue("longitude", spot.longitude);
+                    setImportedName(spot.name);
+                    setImportedAddress(spot.address);
+                    setImportedPhotos(spot.photos ?? []);
                   }}
                 />
               )}
-            />
-          </View>
-
-          {/* Name */}
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecondary }]}>
-              Name
-            </Text>
-            <Controller
-              control={control}
-              name="name"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      color: theme.text,
-                      borderColor: errors.name ? "#D94F3D" : theme.border,
-                      backgroundColor: theme.surface,
-                    },
-                  ]}
-                  placeholder="e.g. Café Central, Neni am Naschmarkt"
-                  placeholderTextColor={theme.textSecondary}
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  autoCapitalize="words"
-                  returnKeyType="next"
-                />
-              )}
-            />
-            {errors.name && (
-              <Text style={styles.errorText}>{errors.name.message}</Text>
-            )}
-          </View>
+            </View>
+          )}
 
           {/* Notes */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecondary }]}>
-              Notes
-            </Text>
             <Controller
               control={control}
               name="notes"
               render={({ field: { onChange, onBlur, value } }) => (
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.notesInput,
-                    {
-                      color: theme.text,
-                      borderColor: theme.border,
-                      backgroundColor: theme.surface,
-                    },
-                  ]}
+                <Input
+                  label="Notes"
                   placeholder="What made this place special?"
-                  placeholderTextColor={theme.textSecondary}
-                  value={value}
+                  value={value ?? ""}
                   onChangeText={onChange}
                   onBlur={onBlur}
                   multiline
                   numberOfLines={3}
                   returnKeyType="done"
-                  textAlignVertical="top"
                 />
               )}
             />
@@ -279,7 +314,11 @@ export default function CreateSpotScreen() {
             <Text style={[styles.label, { color: theme.textSecondary }]}>
               Tags
             </Text>
-            <TagInput value={tagLabels} onChange={setTagLabels} theme={theme} />
+            <TagPicker
+              value={tagLabels}
+              onChange={setTagLabels}
+              theme={theme}
+            />
           </View>
 
           <TouchableOpacity
@@ -342,47 +381,37 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    fontFamily: FontFamily.medium,
-    fontSize: 11,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  input: {
-    fontFamily: FontFamily.regular,
-    fontSize: 15,
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  notesInput: {
-    height: 96,
-    paddingTop: 14,
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  dividerLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-  },
-  dividerText: {
-    fontFamily: FontFamily.regular,
+    fontFamily: FontFamily.semiBold,
     fontSize: 13,
   },
-  errorText: {
+  importedCard: {
+    borderWidth: 1,
+    borderRadius: Radius.lg,
+    padding: Spacing.space4,
+    gap: Spacing.space2,
+  },
+  importedHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: Spacing.space2,
+  },
+  importedName: {
+    ...Typography.placeName,
+    flex: 1,
+  },
+  importedReset: {
+    marginTop: 2,
+  },
+  importedAddress: {
     ...Typography.secondary,
-    color: "#D94F3D",
-    marginLeft: 4,
   },
   saveButton: {
-    borderRadius: 16,
-    paddingVertical: 16,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: "center",
   },
   saveButtonText: {
-    color: "#FFFFFF",
+    color: Palette.paper100,
   },
 });

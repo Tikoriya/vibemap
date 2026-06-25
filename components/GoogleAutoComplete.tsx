@@ -1,7 +1,9 @@
 import googleApi, { PlaceDetail } from '@/lib/services/google';
 import { useAutoComplete } from '@/hooks/useAutoComplete';
 import { Colors } from '@/constants/Colors';
-import { FontFamily, Typography } from '@/constants/Typography';
+import { Spacing } from '@/constants/Theme';
+import { Typography } from '@/constants/Typography';
+import { AlertCircle } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -24,11 +26,13 @@ type Props = {
   onPlaceSelected: (place: PlaceDetail) => void;
   error?: string;
   prefillValue?: string;
+  label?: string;
 };
 
 export const PlacesAutocompleteField = (props: Props) => {
-  const { onPlaceSelected, error, prefillValue } = props;
+  const { onPlaceSelected, error, prefillValue, label = 'Location' } = props;
   const [inputValue, setInputValue] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
     if (prefillValue) {
@@ -44,7 +48,7 @@ export const PlacesAutocompleteField = (props: Props) => {
   const isDark = colorScheme === 'dark';
   const theme = isDark ? Colors.dark : Colors.light;
 
-  const { data, isLoading } = useAutoComplete(debouncedQuery);
+  const { data, isLoading: isFetchingSuggestions } = useAutoComplete(debouncedQuery);
 
   const suggestions: Suggestion[] =
     debouncedQuery.length >= 2
@@ -78,42 +82,57 @@ export const PlacesAutocompleteField = (props: Props) => {
   };
 
   const showDropdown = suggestions.length > 0 && !isLoadingDetails;
+  const isActive = !!error || isFocused;
+  const borderColor = error
+    ? theme.error
+    : isFocused
+      ? theme.accent
+      : theme.border;
+  const showSpinner = isFetchingSuggestions || isLoadingDetails;
 
   return (
-    <View>
+    <View style={styles.container}>
+      {label ? (
+        <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
+      ) : null}
+
       <View
         style={[
-          styles.inputWrapper,
-          {
-            borderColor: error ? '#D94F3D' : theme.border,
-            backgroundColor: theme.surface,
-          },
+          styles.row,
+          { borderBottomColor: borderColor, borderBottomWidth: isActive ? 2 : 1 },
         ]}
       >
         <TextInput
           style={[styles.input, { color: theme.text }]}
           placeholder="Search address or place name"
-          placeholderTextColor={theme.textSecondary}
+          placeholderTextColor={theme.textMuted}
           value={inputValue}
           onChangeText={handleChangeText}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="search"
         />
-        {(isLoading || isLoadingDetails) && (
+
+        {showSpinner ? (
           <ActivityIndicator
             size="small"
             color={theme.accent}
-            style={styles.spinner}
+            style={styles.trailingIcon}
           />
-        )}
+        ) : null}
+
+        {error ? (
+          <AlertCircle size={18} color={theme.error} style={styles.trailingIcon} />
+        ) : null}
       </View>
 
-      {error && (
-        <Text style={styles.errorText}>{error}</Text>
-      )}
+      {error ? (
+        <Text style={[styles.error, { color: theme.error }]}>{error}</Text>
+      ) : null}
 
-      {showDropdown && (
+      {showDropdown ? (
         <View
           style={[
             styles.dropdown,
@@ -155,36 +174,36 @@ export const PlacesAutocompleteField = (props: Props) => {
             )}
           />
         </View>
-      )}
+      ) : null}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  inputWrapper: {
+  container: {
+    gap: Spacing.space2,
+  },
+  label: {
+    ...Typography.label,
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 16,
+    paddingVertical: Spacing.space2,
   },
   input: {
+    ...Typography.body,
     flex: 1,
-    fontFamily: FontFamily.regular,
-    fontSize: 15,
-    paddingVertical: 14,
+    padding: 0,
   },
-  spinner: {
-    marginLeft: 8,
+  trailingIcon: {
+    marginLeft: Spacing.space2,
   },
-  errorText: {
+  error: {
     ...Typography.secondary,
-    color: '#D94F3D',
-    marginTop: 4,
-    marginLeft: 4,
   },
   dropdown: {
-    marginTop: 4,
+    marginTop: Spacing.space1,
     borderWidth: 1,
     borderRadius: 14,
     overflow: 'hidden',

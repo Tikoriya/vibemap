@@ -1,18 +1,28 @@
-import { PlacesAutocompleteField } from "@/components/GoogleAutoComplete";
+import { EditablePhoto, SpotPhotoEditor } from "@/components/SpotPhotoEditor";
 import { SpotPhotoGallery } from "@/components/SpotPhotoGallery";
-import { TagInput } from "@/components/TagInput";
-import { Colors } from "@/constants/Colors";
+import { TagPicker } from "@/components/TagPicker";
+import { ICON_LABELS, IconLabelKey } from "@/components/ui/IconLabel";
+import { Input } from "@/components/ui/Input";
+import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
+import { Colors, Palette } from "@/constants/Colors";
+import { Radius, Spacing } from "@/constants/Theme";
 import { FontFamily, Typography } from "@/constants/Typography";
 import { useCreateTag } from "@/hooks/useCreateTag";
 import { useSpot } from "@/hooks/useSpot";
 import { spotSchema, SpotFormValues } from "@/lib/schemas/spot";
+import {
+  deletePhotosFromStorage,
+  uploadPhotoFromUri,
+} from "@/lib/services/photoUpload";
 import { spotPhotosApi } from "@/lib/supabase/spot_photos";
 import { spotsApi } from "@/lib/supabase/spots";
 import { tagsSpotsApi } from "@/lib/supabase/tags_spots";
 import { Tag } from "@/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Tag as TagIcon } from "lucide-react-native";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -24,7 +34,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   useColorScheme,
   View,
@@ -36,6 +45,11 @@ type SpotRouteParams = {
   spotid: string;
 };
 
+const getTagIcon = (label: string) => {
+  const key = label.trim().toLowerCase();
+  return key in ICON_LABELS ? ICON_LABELS[key as IconLabelKey].icon : TagIcon;
+};
+
 export default function SpotDetailScreen() {
   const { spotid, cityid } = useLocalSearchParams<SpotRouteParams>();
   const router = useRouter();
@@ -44,9 +58,19 @@ export default function SpotDetailScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const theme = isDark ? Colors.dark : Colors.light;
+  const tabBarPadding = useBottomTabOverflow();
+  const scrollContentStyle = [styles.content, { paddingBottom: 24 + tabBarPadding }];
+  const editContentStyle = [
+    styles.editContent,
+    { paddingBottom: 24 + tabBarPadding },
+  ];
 
   const [isEditing, setIsEditing] = useState(false);
   const [tagLabels, setTagLabels] = useState<string[]>([]);
+  const [editPhotos, setEditPhotos] = useState<EditablePhoto[]>([]);
+  const [removedPhotos, setRemovedPhotos] = useState<
+    { id: number; url: string }[]
+  >([]);
 
   const { updateSpot } = useSpot(cityid);
   const { mutateAsync: createTags } = useCreateTag();
@@ -66,7 +90,6 @@ export default function SpotDetailScreen() {
   const {
     control,
     handleSubmit,
-    setValue,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<SpotFormValues>({
@@ -91,11 +114,41 @@ export default function SpotDetailScreen() {
     });
     const existingTags = ((spot as any).tags as Tag[] | undefined) ?? [];
     setTagLabels(existingTags.map((t) => t.label));
+    setEditPhotos(spotPhotos.map((p) => ({ id: p.id, uri: p.url })));
+    setRemovedPhotos([]);
     setIsEditing(true);
   };
 
   const cancelEdit = () => {
     setIsEditing(false);
+  };
+
+  const handleRemovePhoto = (photo: EditablePhoto) => {
+    setEditPhotos((prev) => prev.filter((p) => p.uri !== photo.uri));
+    if (photo.id != null) {
+      setRemovedPhotos((prev) => [...prev, { id: photo.id!, url: photo.uri }]);
+    }
+  };
+
+  const handleAddPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission required",
+        "Please allow photo library access in Settings to add a photo.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.85,
+    });
+
+    if (!result.canceled) {
+      setEditPhotos((prev) => [...prev, { uri: result.assets[0].uri }]);
+    }
   };
 
   const onSave = async (values: SpotFormValues) => {
@@ -124,7 +177,45 @@ export default function SpotDetailScreen() {
         );
       }
 
+      if (removedPhotos.length > 0) {
+        await spotPhotosApi.deletePhotos(removedPhotos.map((p) => p.id));
+        await deletePhotosFromStorage(removedPhotos.map((p) => p.url));
+      }
+
+      // editPhotos order is the source of truth (index 0 = cover): each photo's
+      // index becomes its stored position. Existing photos are repositioned in
+      // place; new photos are uploaded and inserted at their index.
+      const positionUpdates: { id: number; position: number }[] = [];
+      const newInserts: { spot_id: number; url: string; position: number }[] =
+        [];
+
+      for (let index = 0; index < editPhotos.length; index++) {
+        const photo = editPhotos[index];
+        if (photo.id != null) {
+          positionUpdates.push({ id: photo.id, position: index });
+        } else {
+          try {
+            const url = await uploadPhotoFromUri(
+              parseInt(spotid),
+              photo.uri,
+              index
+            );
+            newInserts.push({ spot_id: parseInt(spotid), url, position: index });
+          } catch {
+            // skip photos that fail to upload
+          }
+        }
+      }
+
+      if (positionUpdates.length > 0) {
+        await spotPhotosApi.updatePositions(positionUpdates);
+      }
+      if (newInserts.length > 0) {
+        await spotPhotosApi.insertPhotos(newInserts);
+      }
+
       await queryClient.invalidateQueries({ queryKey: ["spot", spotid] });
+      await queryClient.invalidateQueries({ queryKey: ["spot_photos", spotid] });
       await queryClient.invalidateQueries({ queryKey: ["spots", cityid] });
       setIsEditing(false);
     } catch {
@@ -194,10 +285,6 @@ export default function SpotDetailScreen() {
           </TouchableOpacity>
         )}
 
-        <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>
-          {isEditing ? "Edit Spot" : spot.name}
-        </Text>
-
         {isEditing ? (
           <TouchableOpacity
             onPress={handleSubmit(onSave)}
@@ -227,95 +314,75 @@ export default function SpotDetailScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <ScrollView
-            contentContainerStyle={styles.content}
+            contentContainerStyle={editContentStyle}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Location */}
+            {/* Name — rendered as the screen title */}
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
-                Location
-              </Text>
-              <Controller
-                control={control}
-                name="address"
-                render={() => (
-                  <PlacesAutocompleteField
-                    error={errors.address?.message}
-                    onPlaceSelected={(place) => {
-                      setValue("address", place.address, { shouldValidate: true });
-                      setValue("latitude", place.latitude);
-                      setValue("longitude", place.longitude);
-                    }}
-                  />
-                )}
-              />
-              {spot.address ? (
-                <Text style={[Typography.secondary, { color: theme.textSecondary }]}>
-                  Current: {spot.address}
-                </Text>
-              ) : null}
-            </View>
-
-            {/* Name */}
-            <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
-                Name
-              </Text>
               <Controller
                 control={control}
                 name="name"
                 render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        color: theme.text,
-                        borderColor: errors.name ? "#D94F3D" : theme.border,
-                        backgroundColor: theme.surface,
-                      },
-                    ]}
+                  <Input
+                    variant="title"
+                    placeholder="Name"
+                    error={errors.name?.message}
                     value={value}
                     onChangeText={onChange}
                     onBlur={onBlur}
                     autoCapitalize="words"
                     returnKeyType="next"
-                    placeholderTextColor={theme.textSecondary}
                   />
                 )}
               />
-              {errors.name && (
-                <Text style={styles.errorText}>{errors.name.message}</Text>
-              )}
+            </View>
+
+            {/* Location */}
+            <View style={styles.field}>
+              <Controller
+                control={control}
+                name="address"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <Input
+                    label="Location"
+                    error={errors.address?.message}
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                  />
+                )}
+              />
+            </View>
+
+            {/* Photos */}
+            <View style={styles.field}>
+              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
+                Photos
+              </Text>
+              <SpotPhotoEditor
+                photos={editPhotos}
+                onReorder={setEditPhotos}
+                onRemove={handleRemovePhoto}
+                onAdd={handleAddPhoto}
+                theme={theme}
+              />
             </View>
 
             {/* Notes */}
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
-                Notes
-              </Text>
               <Controller
                 control={control}
                 name="notes"
                 render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    style={[
-                      styles.input,
-                      styles.notesInput,
-                      {
-                        color: theme.text,
-                        borderColor: theme.border,
-                        backgroundColor: theme.surface,
-                      },
-                    ]}
-                    value={value}
+                  <Input
+                    label="Notes"
+                    placeholder="What made this place special?"
+                    value={value ?? ""}
                     onChangeText={onChange}
                     onBlur={onBlur}
                     multiline
                     numberOfLines={3}
-                    textAlignVertical="top"
-                    placeholderTextColor={theme.textSecondary}
-                    placeholder="What made this place special?"
                   />
                 )}
               />
@@ -326,15 +393,19 @@ export default function SpotDetailScreen() {
               <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
                 Tags
               </Text>
-              <TagInput value={tagLabels} onChange={setTagLabels} theme={theme} />
+              <TagPicker value={tagLabels} onChange={setTagLabels} theme={theme} />
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
       ) : (
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={scrollContentStyle}
           showsVerticalScrollIndicator={false}
         >
+          <Text style={[Typography.title, styles.spotTitle, { color: theme.text }]}>
+            {spot.name}
+          </Text>
+
           {spotPhotos.length > 0 ? (
             <SpotPhotoGallery photos={spotPhotos.map((p) => p.url)} />
           ) : null}
@@ -351,6 +422,30 @@ export default function SpotDetailScreen() {
               </View>
             ) : null}
 
+            {tags.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+                  Tags
+                </Text>
+                <View style={styles.tagsRow}>
+                  {tags.map((tag) => {
+                    const Icon = getTagIcon(tag.label);
+                    return (
+                      <View
+                        key={tag.id}
+                        style={[styles.tagPill, { backgroundColor: theme.accentSubtle }]}
+                      >
+                        <Icon size={14} color={theme.accent} strokeWidth={2} />
+                        <Text style={[styles.tagPillText, { color: theme.accent }]}>
+                          {tag.label}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+
             {spot.notes ? (
               <View style={styles.section}>
                 <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
@@ -359,26 +454,6 @@ export default function SpotDetailScreen() {
                 <Text style={[Typography.body, { color: theme.text }]}>
                   {spot.notes}
                 </Text>
-              </View>
-            ) : null}
-
-            {tags.length > 0 ? (
-              <View style={styles.section}>
-                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
-                  Tags
-                </Text>
-                <View style={styles.tagsRow}>
-                  {tags.map((tag) => (
-                    <View
-                      key={tag.id}
-                      style={[styles.tagPill, { backgroundColor: theme.accentSubtle }]}
-                    >
-                      <Text style={[styles.tagPillText, { color: theme.accent }]}>
-                        {tag.label}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
               </View>
             ) : null}
 
@@ -415,6 +490,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -423,17 +499,21 @@ const styles = StyleSheet.create({
   headerActionText: {
     fontFamily: FontFamily.medium,
     fontSize: 16,
-    width: 64,
   },
-  headerTitle: {
-    flex: 1,
-    fontFamily: FontFamily.semiBold,
-    fontSize: 16,
-    textAlign: "center",
+  spotTitle: {
+    paddingHorizontal: 20,
+    paddingTop: Spacing.space4,
+    paddingBottom: Spacing.space4,
   },
   content: {
     paddingBottom: 24,
     gap: 0,
+  },
+  editContent: {
+    paddingHorizontal: Spacing.space4,
+    paddingTop: Spacing.space6,
+    paddingBottom: 24,
+    gap: Spacing.space6,
   },
   textContent: {
     paddingHorizontal: 20,
@@ -444,10 +524,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   sectionLabel: {
-    fontFamily: FontFamily.medium,
-    fontSize: 11,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
+    fontFamily: FontFamily.semiBold,
+    fontSize: 13,
   },
   tagsRow: {
     flexDirection: "row",
@@ -455,46 +533,30 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tagPill: {
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: Radius.full,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
   },
   tagPillText: {
-    fontFamily: FontFamily.medium,
+    fontFamily: FontFamily.semiBold,
     fontSize: 13,
   },
   mapsButton: {
-    borderRadius: 16,
-    paddingVertical: 16,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: "center",
   },
   mapsButtonText: {
-    color: "#FFFFFF",
+    color: Palette.paper100,
   },
   field: {
     gap: 8,
   },
   fieldLabel: {
-    fontFamily: FontFamily.medium,
-    fontSize: 11,
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  input: {
-    fontFamily: FontFamily.regular,
-    fontSize: 15,
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  notesInput: {
-    height: 96,
-    paddingTop: 14,
-  },
-  errorText: {
-    ...Typography.secondary,
-    color: "#D94F3D",
-    marginLeft: 4,
+    fontFamily: FontFamily.semiBold,
+    fontSize: 13,
   },
 });

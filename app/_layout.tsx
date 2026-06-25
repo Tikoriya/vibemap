@@ -5,10 +5,21 @@ import {
   DMSans_600SemiBold,
   DMSans_700Bold,
 } from "@expo-google-fonts/dm-sans";
+import {
+  DMMono_400Regular,
+  DMMono_500Medium,
+} from "@expo-google-fonts/dm-mono";
+import {
+  PlayfairDisplay_500Medium,
+  PlayfairDisplay_600SemiBold,
+  PlayfairDisplay_700Bold,
+  PlayfairDisplay_500Medium_Italic,
+} from "@expo-google-fonts/playfair-display";
 import { useFonts } from "expo-font";
 import * as Linking from "expo-linking";
 import { Slot } from "expo-router";
 import { useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-get-random-values";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
@@ -24,6 +35,12 @@ export default function RootLayout() {
     DMSans_500Medium,
     DMSans_600SemiBold,
     DMSans_700Bold,
+    DMMono_400Regular,
+    DMMono_500Medium,
+    PlayfairDisplay_500Medium,
+    PlayfairDisplay_500Medium_Italic,
+    PlayfairDisplay_600SemiBold,
+    PlayfairDisplay_700Bold,
   });
 
   useEffect(() => {
@@ -55,9 +72,11 @@ export default function RootLayout() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Slot />
-      <Toast />
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <Slot />
+        <Toast />
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

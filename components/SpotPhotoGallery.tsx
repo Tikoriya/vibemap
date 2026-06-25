@@ -1,8 +1,10 @@
+import { Radius, Spacing } from "@/constants/Theme";
 import React from "react";
-import { Dimensions, Image, StyleSheet, View } from "react-native";
+import { Dimensions, Image, ScrollView, StyleSheet, View } from "react-native";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const GAP = 3;
+const GALLERY_HEIGHT = 260;
+const ITEM_WIDTH = SCREEN_WIDTH * 0.78;
 
 type Props = {
   photos: string[];
@@ -21,63 +23,41 @@ export const SpotPhotoGallery = (props: Props) => {
     );
   }
 
-  if (photos.length === 2) {
-    const imgWidth = (SCREEN_WIDTH - GAP) / 2;
-    return (
-      <View style={styles.row}>
-        <Image source={{ uri: photos[0] }} style={[styles.halfImage, { width: imgWidth }]} resizeMode="cover" />
-        <Image source={{ uri: photos[1] }} style={[styles.halfImage, { width: imgWidth }]} resizeMode="cover" />
-      </View>
-    );
-  }
-
-  // 3+ photos: large left, up to 2 stacked right
-  const leftWidth = (SCREEN_WIDTH - GAP) * 0.6;
-  const rightWidth = SCREEN_WIDTH - GAP - leftWidth;
-  const collageHeight = 260;
-  const rightItemHeight = (collageHeight - GAP) / 2;
-
   return (
-    <View style={[styles.row, { height: collageHeight }]}>
-      <Image
-        source={{ uri: photos[0] }}
-        style={{ width: leftWidth, height: collageHeight }}
-        resizeMode="cover"
-      />
-      <View style={[styles.rightCol, { width: rightWidth }]}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+    >
+      {photos.map((uri, index) => (
         <Image
-          source={{ uri: photos[1] }}
-          style={{ width: rightWidth, height: rightItemHeight }}
+          key={`${uri}-${index}`}
+          source={{ uri }}
+          style={styles.galleryImage}
           resizeMode="cover"
         />
-        <View style={{ height: GAP }} />
-        <Image
-          source={{ uri: photos[2] }}
-          style={{ width: rightWidth, height: rightItemHeight }}
-          resizeMode="cover"
-        />
-      </View>
-    </View>
+      ))}
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   single: {
     width: "100%",
+    paddingHorizontal: Spacing.space4,
   },
   singleImage: {
     width: "100%",
     height: 240,
+    borderRadius: Radius.lg,
   },
-  row: {
-    flexDirection: "row",
-    gap: GAP,
-    width: "100%",
+  scrollContent: {
+    paddingHorizontal: Spacing.space4,
+    gap: Spacing.space3,
   },
-  halfImage: {
-    height: 200,
-  },
-  rightCol: {
-    flexDirection: "column",
+  galleryImage: {
+    width: ITEM_WIDTH,
+    height: GALLERY_HEIGHT,
+    borderRadius: Radius.lg,
   },
 });

@@ -40,6 +40,26 @@ const googleApi = {
             longitude: location?.longitude ?? 0,
         };
     },
+
+    // Best-effort resolution of a country from a city name, used to pre-fill the
+    // country field when creating a city. Returns null on any failure.
+    getCountryForCity: async (city: string): Promise<string | null> => {
+        try {
+            const response = await placesClient.post(
+                ':searchText',
+                { textQuery: city, includedType: 'locality' },
+                { headers: { 'X-Goog-FieldMask': 'places.addressComponents' } },
+            );
+            const place = response.data?.places?.[0];
+            const country = place?.addressComponents?.find(
+                (component: { types?: string[] }) =>
+                    Array.isArray(component.types) && component.types.includes('country'),
+            );
+            return country?.longText ?? null;
+        } catch {
+            return null;
+        }
+    },
 };
 
 export default googleApi;
