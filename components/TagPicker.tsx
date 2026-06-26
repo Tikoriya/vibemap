@@ -1,9 +1,12 @@
 import { useRouter } from "expo-router";
 import { Check, LucideIcon, Pencil, Plus, X } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -36,9 +39,10 @@ type Props = {
 const COLUMNS = 4;
 const GAP = Spacing.space3;
 const SCREEN_PADDING = Spacing.space4;
-const ITEM_SIZE =
-  (Dimensions.get("window").width - SCREEN_PADDING * 2 - GAP * (COLUMNS - 1)) /
-  COLUMNS;
+// Width available to the picker once the surrounding screen padding is removed.
+// Each swipe page fills exactly this width so paging snaps cleanly.
+const PAGE_WIDTH = Dimensions.get("window").width - SCREEN_PADDING * 2;
+const ITEM_SIZE = (PAGE_WIDTH - GAP * (COLUMNS - 1)) / COLUMNS;
 const CIRCLE_SIZE = 44;
 // Total items per page, counting the leading "Add label" button. A multiple of
 // COLUMNS so each page fills complete rows.
@@ -66,6 +70,7 @@ export const TagPicker = (props: Props) => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [page, setPage] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
 
   // Auto-select a label just created via the "New Label" modal.
   useEffect(() => {
@@ -117,15 +122,30 @@ export const TagPicker = (props: Props) => {
 
   const pageCount = Math.max(1, Math.ceil(allTags.length / TAGS_PER_PAGE));
   const safePage = Math.min(page, pageCount - 1);
-  const pageTags = allTags.slice(
-    safePage * TAGS_PER_PAGE,
-    safePage * TAGS_PER_PAGE + TAGS_PER_PAGE,
+  const pages = Array.from({ length: pageCount }, (_, i) =>
+    allTags.slice(i * TAGS_PER_PAGE, i * TAGS_PER_PAGE + TAGS_PER_PAGE),
   );
 
   // Keep the page in range when tags are added or deleted.
   useEffect(() => {
-    if (page > pageCount - 1) setPage(pageCount - 1);
+    if (page > pageCount - 1) {
+      const last = pageCount - 1;
+      setPage(last);
+      scrollRef.current?.scrollTo({ x: last * PAGE_WIDTH, animated: false });
+    }
   }, [page, pageCount]);
+
+  const goToPage = (i: number) => {
+    setPage(i);
+    scrollRef.current?.scrollTo({ x: i * PAGE_WIDTH, animated: true });
+  };
+
+  const handleMomentumScrollEnd = (
+    e: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const i = Math.round(e.nativeEvent.contentOffset.x / PAGE_WIDTH);
+    if (i !== safePage) setPage(i);
+  };
 
   // Selection matches by normalized label so a predefined pick ("Coffee")
   // highlights even when the spot stored it differently cased ("coffee").
@@ -211,91 +231,106 @@ export const TagPicker = (props: Props) => {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.grid}>
-        {pageTags.map((tag) => {
-          const isSelected = isLabelSelected(tag.label);
-          const canModify = isEditing && tag.id != null;
-          return (
-            <TouchableOpacity
-              key={tag.label}
-              style={styles.item}
-              onPress={() => handleTagPress(tag)}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityState={{ selected: isSelected }}
-            >
-              <View style={styles.iconWrap}>
-                <IconLabel
-                  icon={tag.icon}
-                  size={CIRCLE_SIZE}
-                  color={isSelected ? Palette.paper0 : theme.ochre}
-                  background={isSelected ? theme.ochre : theme.ochreSubtle}
-                />
-                {canModify ? (
-                  <TouchableOpacity
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        scrollEnabled={pageCount > 1}
+        decelerationRate="fast"
+      >
+        {pages.map((pageTags, pageIndex) => (
+          <View key={pageIndex} style={styles.page}>
+            {pageTags.map((tag) => {
+              const isSelected = isLabelSelected(tag.label);
+              const canModify = isEditing && tag.id != null;
+              return (
+                <TouchableOpacity
+                  key={tag.label}
+                  style={styles.item}
+                  onPress={() => handleTagPress(tag)}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                >
+                  <View style={styles.iconWrap}>
+                    <IconLabel
+                      icon={tag.icon}
+                      size={CIRCLE_SIZE}
+                      color={isSelected ? Palette.paper0 : theme.ochre}
+                      background={isSelected ? theme.ochre : theme.ochreSubtle}
+                    />
+                    {canModify ? (
+                      <TouchableOpacity
+                        style={[
+                          styles.deleteBadge,
+                          {
+                            backgroundColor: theme.surfaceElevated,
+                            borderColor: theme.border,
+                          },
+                        ]}
+                        onPress={() => handleDelete(tag)}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Delete ${tag.label}`}
+                      >
+                        <X size={12} color={theme.text} strokeWidth={3} />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                  <Text
                     style={[
-                      styles.deleteBadge,
+                      styles.label,
                       {
-                        backgroundColor: theme.surfaceElevated,
-                        borderColor: theme.border,
+                        color: isSelected ? theme.text : theme.textSecondary,
+                        fontFamily: isSelected
+                          ? FontFamily.semiBold
+                          : FontFamily.regular,
                       },
                     ]}
-                    onPress={() => handleDelete(tag)}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Delete ${tag.label}`}
+                    numberOfLines={1}
                   >
-                    <X size={12} color={theme.text} strokeWidth={3} />
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-              <Text
+                    {tag.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity
+              style={styles.item}
+              onPress={handleAddLabel}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Add a custom label"
+            >
+              <View
                 style={[
-                  styles.label,
+                  styles.addCircle,
                   {
-                    color: isSelected ? theme.text : theme.textSecondary,
-                    fontFamily: isSelected
-                      ? FontFamily.semiBold
-                      : FontFamily.regular,
+                    borderColor: theme.ochre,
+                    backgroundColor: theme.ochreSubtle,
                   },
                 ]}
+              >
+                <Plus size={Math.round(CIRCLE_SIZE * 0.4)} color={theme.ochre} />
+              </View>
+              <Text
+                style={[styles.label, { color: theme.textSecondary }]}
                 numberOfLines={1}
               >
-                {tag.label}
+                Add label
               </Text>
             </TouchableOpacity>
-          );
-        })}
-        <TouchableOpacity
-          style={styles.item}
-          onPress={handleAddLabel}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel="Add a custom label"
-        >
-          <View
-            style={[
-              styles.addCircle,
-              { borderColor: theme.ochre, backgroundColor: theme.ochreSubtle },
-            ]}
-          >
-            <Plus size={Math.round(CIRCLE_SIZE * 0.4)} color={theme.ochre} />
           </View>
-          <Text
-            style={[styles.label, { color: theme.textSecondary }]}
-            numberOfLines={1}
-          >
-            Add label
-          </Text>
-        </TouchableOpacity>
-      </View>
+        ))}
+      </ScrollView>
 
       {pageCount > 1 ? (
         <View style={styles.dots}>
           {Array.from({ length: pageCount }).map((_, i) => (
             <TouchableOpacity
               key={i}
-              onPress={() => setPage(i)}
+              onPress={() => goToPage(i)}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel={`Go to page ${i + 1} of ${pageCount}`}
@@ -343,7 +378,8 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.semiBold,
     fontSize: 13,
   },
-  grid: {
+  page: {
+    width: PAGE_WIDTH,
     flexDirection: "row",
     flexWrap: "wrap",
     gap: GAP,
