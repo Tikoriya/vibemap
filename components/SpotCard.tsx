@@ -1,4 +1,4 @@
-import { Map as MapIcon, MapPin } from "lucide-react-native";
+import { MapPin, Star } from "lucide-react-native";
 import {
   Alert,
   Image,
@@ -19,13 +19,12 @@ type SpotCardProps = {
   spot: Spot;
   onPress: () => void;
   onDelete: () => void;
-  onMapPress?: () => void;
 };
 
 const THUMB_SIZE = 76;
 
 export const SpotCard = (props: SpotCardProps) => {
-  const { spot, onPress, onDelete, onMapPress } = props;
+  const { spot, onPress, onDelete } = props;
 
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? Colors.dark : Colors.light;
@@ -92,14 +91,15 @@ export const SpotCard = (props: SpotCardProps) => {
         ) : null}
       </View>
 
-      <TouchableOpacity
-        onPress={onMapPress ?? onPress}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        accessibilityRole="button"
-        accessibilityLabel="Show on map"
-      >
-        <MapIcon size={22} color={theme.text} strokeWidth={2} />
-      </TouchableOpacity>
+      {spot.is_favorite ? (
+        <Star
+          size={20}
+          color={theme.ochre}
+          fill={theme.ochre}
+          strokeWidth={2}
+          style={styles.favoriteStar}
+        />
+      ) : null}
     </TouchableOpacity>
   );
 };
@@ -132,5 +132,8 @@ const styles = StyleSheet.create({
   iconRow: {
     flexDirection: "row",
     gap: Spacing.space2,
+  },
+  favoriteStar: {
+    alignSelf: "flex-start",
   },
 });

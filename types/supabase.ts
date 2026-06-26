@@ -111,6 +111,7 @@ export type Database = {
           address: string | null
           latitude: number | null
           longitude: number | null
+          is_favorite: boolean
         }
         Insert: {
           city_id: number
@@ -121,6 +122,7 @@ export type Database = {
           address?: string | null
           latitude?: number | null
           longitude?: number | null
+          is_favorite?: boolean
         }
         Update: {
           city_id?: number
@@ -131,6 +133,7 @@ export type Database = {
           address?: string | null
           latitude?: number | null
           longitude?: number | null
+          is_favorite?: boolean
         }
         Relationships: [
           {

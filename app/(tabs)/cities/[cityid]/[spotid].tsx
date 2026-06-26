@@ -22,7 +22,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, MapPin, Navigation, Pencil } from "lucide-react-native";
+import {
+  ChevronLeft,
+  MapPin,
+  Navigation,
+  Pencil,
+  Star,
+} from "lucide-react-native";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -226,6 +232,19 @@ export default function SpotDetailScreen() {
     }
   };
 
+  const handleToggleFavorite = async () => {
+    if (!spot) return;
+    try {
+      await updateSpot({
+        spotId: parseInt(spotid),
+        updates: { is_favorite: !spot.is_favorite },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["spot", spotid] });
+    } catch {
+      Alert.alert("Error", "Could not update favorite. Please try again.");
+    }
+  };
+
   const handleOpenInMaps = () => {
     if (!spot?.latitude || !spot?.longitude) return;
     const { latitude, longitude, name } = spot;
@@ -419,13 +438,38 @@ export default function SpotDetailScreen() {
 
         {/* Overlapping content sheet */}
         <View style={[styles.sheet, { backgroundColor: theme.background }]}>
-          <Text style={[Typography.heading1, { color: theme.text }]}>
-            {spot.name}
-          </Text>
+          <View style={styles.titleRow}>
+            <Text
+              style={[Typography.heading1, styles.titleText, { color: theme.text }]}
+            >
+              {spot.name}
+            </Text>
+            <TouchableOpacity
+              onPress={handleToggleFavorite}
+              hitSlop={8}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={
+                spot.is_favorite ? "Remove from favorites" : "Add to favorites"
+              }
+            >
+              <Star
+                size={26}
+                color={theme.ochre}
+                fill={spot.is_favorite ? theme.ochre : "transparent"}
+                strokeWidth={2}
+              />
+            </TouchableOpacity>
+          </View>
 
           {spot.address ? (
             <View style={styles.addressRow}>
-              <MapPin size={15} color={theme.textSecondary} strokeWidth={2} />
+              <MapPin
+                size={15}
+                color={theme.textSecondary}
+                strokeWidth={2}
+                style={styles.addressIcon}
+              />
               <Text
                 style={[Typography.secondary, styles.addressText, { color: theme.textSecondary }]}
               >
@@ -552,11 +596,23 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.space6,
     gap: Spacing.space4,
   },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: Spacing.space3,
+  },
+  titleText: {
+    flex: 1,
+  },
   addressRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: Spacing.space2,
     marginTop: -Spacing.space2,
+  },
+  addressIcon: {
+    marginTop: 3,
   },
   addressText: {
     flex: 1,

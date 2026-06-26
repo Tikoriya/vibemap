@@ -40,6 +40,10 @@ const ITEM_SIZE =
   (Dimensions.get("window").width - SCREEN_PADDING * 2 - GAP * (COLUMNS - 1)) /
   COLUMNS;
 const CIRCLE_SIZE = 44;
+// Total items per page, counting the leading "Add label" button. A multiple of
+// COLUMNS so each page fills complete rows.
+const PAGE_SIZE = COLUMNS * 4;
+const TAGS_PER_PAGE = PAGE_SIZE - 1;
 
 // Only the categories that have a dedicated icon are offered as predefined picks.
 const PREDEFINED_ICON_TAGS: PickerTag[] = (
@@ -61,6 +65,7 @@ export const TagPicker = (props: Props) => {
   const clearRenamedLabel = useLabelDraftStore((s) => s.clearRenamedLabel);
 
   const [isEditing, setIsEditing] = useState(false);
+  const [page, setPage] = useState(0);
 
   // Auto-select a label just created via the "New Label" modal.
   useEffect(() => {
@@ -109,6 +114,18 @@ export const TagPicker = (props: Props) => {
     }));
 
   const allTags = [...predefinedTags, ...customTags];
+
+  const pageCount = Math.max(1, Math.ceil(allTags.length / TAGS_PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageTags = allTags.slice(
+    safePage * TAGS_PER_PAGE,
+    safePage * TAGS_PER_PAGE + TAGS_PER_PAGE,
+  );
+
+  // Keep the page in range when tags are added or deleted.
+  useEffect(() => {
+    if (page > pageCount - 1) setPage(pageCount - 1);
+  }, [page, pageCount]);
 
   // Selection matches by normalized label so a predefined pick ("Coffee")
   // highlights even when the spot stored it differently cased ("coffee").
@@ -195,7 +212,7 @@ export const TagPicker = (props: Props) => {
       </View>
 
       <View style={styles.grid}>
-        {allTags.map((tag) => {
+        {pageTags.map((tag) => {
           const isSelected = isLabelSelected(tag.label);
           const canModify = isEditing && tag.id != null;
           return (
@@ -272,6 +289,31 @@ export const TagPicker = (props: Props) => {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {pageCount > 1 ? (
+        <View style={styles.dots}>
+          {Array.from({ length: pageCount }).map((_, i) => (
+            <TouchableOpacity
+              key={i}
+              onPress={() => setPage(i)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`Go to page ${i + 1} of ${pageCount}`}
+              accessibilityState={{ selected: i === safePage }}
+            >
+              <View
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor:
+                      i === safePage ? theme.text : theme.border,
+                  },
+                ]}
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -340,5 +382,16 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 12,
     textAlign: "center",
+  },
+  dots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: Spacing.space2,
+  },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: Radius.full,
   },
 });
