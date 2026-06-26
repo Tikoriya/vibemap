@@ -19,8 +19,13 @@ export type AuthState = {
 
 // Bridges the freshly created label from the "New Label" modal back to the tag
 // picker underneath it, so it can be auto-selected once the modal dismisses.
+// `renamedLabel` carries an edit (old -> new) so the picker can keep a selected
+// tag selected after its label changes.
 export type LabelDraftStore = {
   pendingLabel: string | null;
   setPendingLabel: (label: string) => void;
   clearPendingLabel: () => void;
+  renamedLabel: { from: string; to: string } | null;
+  setRenamedLabel: (payload: { from: string; to: string }) => void;
+  clearRenamedLabel: () => void;
 };

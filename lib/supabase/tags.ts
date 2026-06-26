@@ -32,5 +32,36 @@ export const tagsApi = {
             .single();
         if (error) return null;
         return data as Tag;
-    }
+    },
+
+    updateTag: async (
+        tagId: number,
+        updates: { label?: string; icon?: string | null },
+    ): Promise<Tag> => {
+        const { data, error } = await supabase
+            .from("tags")
+            .update(updates)
+            .eq("id", tagId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data as Tag;
+    },
+
+    deleteTag: async (tagId: number): Promise<void> => {
+        // spot_tags references tags without ON DELETE CASCADE, so the join rows
+        // must be removed before the tag itself can be deleted.
+        const { error: linkError } = await supabase
+            .from("spot_tags")
+            .delete()
+            .eq("tag_id", tagId);
+        if (linkError) throw linkError;
+
+        const { error } = await supabase
+            .from("tags")
+            .delete()
+            .eq("id", tagId);
+        if (error) throw error;
+    },
 };

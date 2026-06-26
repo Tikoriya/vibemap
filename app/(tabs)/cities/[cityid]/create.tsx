@@ -311,9 +311,6 @@ export default function CreateSpotScreen() {
 
           {/* Tags */}
           <View style={styles.field}>
-            <Text style={[styles.label, { color: theme.textSecondary }]}>
-              Tags
-            </Text>
             <TagPicker
               value={tagLabels}
               onChange={setTagLabels}
@@ -379,10 +376,6 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: 8,
-  },
-  label: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 13,
   },
   importedCard: {
     borderWidth: 1,

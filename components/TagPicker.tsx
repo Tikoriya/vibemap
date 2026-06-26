@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
-import { LucideIcon, Plus } from "lucide-react-native";
-import { useEffect } from "react";
+import { Check, LucideIcon, Pencil, Plus, X } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import {
+  Alert,
   Dimensions,
   StyleSheet,
   Text,
@@ -14,18 +15,22 @@ import { Colors, Palette } from "@/constants/Colors";
 import { getLabelIcon } from "@/constants/LabelIcons";
 import { Radius, Spacing } from "@/constants/Theme";
 import { FontFamily } from "@/constants/Typography";
+import { useDeleteTag } from "@/hooks/useDeleteTag";
 import { useTags } from "@/hooks/useTags";
 import { useLabelDraftStore } from "@/lib/store";
 
 type PickerTag = {
+  id?: number;
   label: string;
   icon: LucideIcon;
+  iconName?: string | null;
 };
 
 type Props = {
   value: string[];
   onChange: (labels: string[]) => void;
   theme: typeof Colors.light;
+  title?: string;
 };
 
 const COLUMNS = 4;
@@ -45,11 +50,17 @@ const PREDEFINED_ICON_TAGS: PickerTag[] = (
 }));
 
 export const TagPicker = (props: Props) => {
-  const { value, onChange, theme } = props;
+  const { value, onChange, theme, title = "Tags" } = props;
   const { tags } = useTags();
   const router = useRouter();
+  const { mutateAsync: deleteTag } = useDeleteTag();
+
   const pendingLabel = useLabelDraftStore((s) => s.pendingLabel);
   const clearPendingLabel = useLabelDraftStore((s) => s.clearPendingLabel);
+  const renamedLabel = useLabelDraftStore((s) => s.renamedLabel);
+  const clearRenamedLabel = useLabelDraftStore((s) => s.clearRenamedLabel);
+
+  const [isEditing, setIsEditing] = useState(false);
 
   // Auto-select a label just created via the "New Label" modal.
   useEffect(() => {
@@ -58,26 +69,100 @@ export const TagPicker = (props: Props) => {
     clearPendingLabel();
   }, [pendingLabel, value, onChange, clearPendingLabel]);
 
+  // Keep a selected tag selected after it was renamed in the edit modal.
+  useEffect(() => {
+    if (!renamedLabel) return;
+    if (value.includes(renamedLabel.from)) {
+      onChange(
+        value.map((l) => (l === renamedLabel.from ? renamedLabel.to : l)),
+      );
+    }
+    clearRenamedLabel();
+  }, [renamedLabel, value, onChange, clearRenamedLabel]);
+
+  const dbByLabel = new Map(
+    (tags ?? []).map((t) => [t.label.toLowerCase(), t]),
+  );
   const predefinedLabels = new Set(
     PREDEFINED_ICON_TAGS.map((t) => t.label.toLowerCase()),
   );
+
+  // Predefined picks resolve to their DB row (for id + chosen icon) when present.
+  const predefinedTags: PickerTag[] = PREDEFINED_ICON_TAGS.map((t) => {
+    const db = dbByLabel.get(t.label.toLowerCase());
+    return {
+      id: db?.id,
+      label: t.label,
+      icon: db?.icon ? getLabelIcon(db.icon) : t.icon,
+      iconName: db?.icon ?? null,
+    };
+  });
 
   // User-created tags render their chosen icon, falling back to a generic one.
   const customTags: PickerTag[] = (tags ?? [])
     .filter((t) => !predefinedLabels.has(t.label.toLowerCase()))
     .map((t) => ({
+      id: t.id,
       label: t.label,
       icon: getLabelIcon(t.icon),
+      iconName: t.icon,
     }));
 
-  const allTags = [...PREDEFINED_ICON_TAGS, ...customTags];
+  const allTags = [...predefinedTags, ...customTags];
+
+  // Selection matches by normalized label so a predefined pick ("Coffee")
+  // highlights even when the spot stored it differently cased ("coffee").
+  const norm = (label: string) => label.trim().toLowerCase();
+  const isLabelSelected = (label: string) =>
+    value.some((l) => norm(l) === norm(label));
 
   const toggle = (label: string) => {
-    if (value.includes(label)) {
-      onChange(value.filter((l) => l !== label));
+    if (isLabelSelected(label)) {
+      onChange(value.filter((l) => norm(l) !== norm(label)));
     } else {
       onChange([...value, label]);
     }
+  };
+
+  const handleTagPress = (tag: PickerTag) => {
+    if (isEditing) {
+      if (tag.id == null) return;
+      router.push({
+        pathname: "/cities/label",
+        params: {
+          id: String(tag.id),
+          name: tag.label,
+          icon: tag.iconName ?? "",
+        },
+      });
+      return;
+    }
+    toggle(tag.label);
+  };
+
+  const handleDelete = (tag: PickerTag) => {
+    if (tag.id == null) return;
+    Alert.alert(
+      "Delete label",
+      `Delete "${tag.label}"? It will be removed from all spots.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            if (isLabelSelected(tag.label)) {
+              onChange(value.filter((l) => norm(l) !== norm(tag.label)));
+            }
+            try {
+              await deleteTag(tag.id!);
+            } catch {
+              Alert.alert("Error", "Could not delete label. Please try again.");
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleAddLabel = () => {
@@ -85,69 +170,137 @@ export const TagPicker = (props: Props) => {
   };
 
   return (
-    <View style={styles.grid}>
-      {allTags.map((tag) => {
-        const isSelected = value.includes(tag.label);
-        return (
-          <TouchableOpacity
-            key={tag.label}
-            style={styles.item}
-            onPress={() => toggle(tag.label)}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityState={{ selected: isSelected }}
-          >
-            <IconLabel
-              icon={tag.icon}
-              size={CIRCLE_SIZE}
-              color={isSelected ? Palette.paper0 : theme.ochre}
-              background={isSelected ? theme.ochre : theme.ochreSubtle}
-            />
-            <Text
-              style={[
-                styles.label,
-                {
-                  color: isSelected ? theme.text : theme.textSecondary,
-                  fontFamily: isSelected
-                    ? FontFamily.semiBold
-                    : FontFamily.regular,
-                },
-              ]}
-              numberOfLines={1}
-            >
-              {tag.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-
-      <TouchableOpacity
-        style={styles.item}
-        onPress={handleAddLabel}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityLabel="Add a custom label"
-      >
-        <View
-          style={[
-            styles.addCircle,
-            { borderColor: theme.ochre, backgroundColor: theme.ochreSubtle },
-          ]}
-        >
-          <Plus size={Math.round(CIRCLE_SIZE * 0.4)} color={theme.ochre} />
-        </View>
-        <Text
-          style={[styles.label, { color: theme.textSecondary }]}
-          numberOfLines={1}
-        >
-          Add label
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: theme.textSecondary }]}>
+          {title}
         </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.editButton, { backgroundColor: theme.accentSubtle }]}
+          onPress={() => setIsEditing((v) => !v)}
+          activeOpacity={0.7}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={isEditing ? "Done editing labels" : "Edit labels"}
+        >
+          {isEditing ? (
+            <Check size={15} color={theme.accent} strokeWidth={2.4} />
+          ) : (
+            <Pencil size={14} color={theme.accent} strokeWidth={2.4} />
+          )}
+          <Text style={[styles.editButtonText, { color: theme.accent }]}>
+            {isEditing ? "Done" : "Edit"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.grid}>
+        {allTags.map((tag) => {
+          const isSelected = isLabelSelected(tag.label);
+          const canModify = isEditing && tag.id != null;
+          return (
+            <TouchableOpacity
+              key={tag.label}
+              style={styles.item}
+              onPress={() => handleTagPress(tag)}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
+            >
+              <View style={styles.iconWrap}>
+                <IconLabel
+                  icon={tag.icon}
+                  size={CIRCLE_SIZE}
+                  color={isSelected ? Palette.paper0 : theme.ochre}
+                  background={isSelected ? theme.ochre : theme.ochreSubtle}
+                />
+                {canModify ? (
+                  <TouchableOpacity
+                    style={[
+                      styles.deleteBadge,
+                      {
+                        backgroundColor: theme.surfaceElevated,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                    onPress={() => handleDelete(tag)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Delete ${tag.label}`}
+                  >
+                    <X size={12} color={theme.text} strokeWidth={3} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+              <Text
+                style={[
+                  styles.label,
+                  {
+                    color: isSelected ? theme.text : theme.textSecondary,
+                    fontFamily: isSelected
+                      ? FontFamily.semiBold
+                      : FontFamily.regular,
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {tag.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+        <TouchableOpacity
+          style={styles.item}
+          onPress={handleAddLabel}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Add a custom label"
+        >
+          <View
+            style={[
+              styles.addCircle,
+              { borderColor: theme.ochre, backgroundColor: theme.ochreSubtle },
+            ]}
+          >
+            <Plus size={Math.round(CIRCLE_SIZE * 0.4)} color={theme.ochre} />
+          </View>
+          <Text
+            style={[styles.label, { color: theme.textSecondary }]}
+            numberOfLines={1}
+          >
+            Add label
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    gap: Spacing.space4,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  title: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 13,
+  },
+  editButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.space1,
+    paddingHorizontal: Spacing.space3,
+    paddingVertical: Spacing.space1,
+    borderRadius: Radius.full,
+  },
+  editButtonText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 13,
+  },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -157,6 +310,21 @@ const styles = StyleSheet.create({
     width: ITEM_SIZE,
     alignItems: "center",
     gap: Spacing.space1,
+  },
+  iconWrap: {
+    width: CIRCLE_SIZE,
+    height: CIRCLE_SIZE,
+  },
+  deleteBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   addCircle: {
     width: CIRCLE_SIZE,

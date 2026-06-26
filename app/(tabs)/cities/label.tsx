@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, X } from "lucide-react-native";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -28,6 +28,7 @@ import {
 import { Radius, Spacing } from "@/constants/Theme";
 import { Typography } from "@/constants/Typography";
 import { useCreateTag } from "@/hooks/useCreateTag";
+import { useUpdateTag } from "@/hooks/useUpdateTag";
 import { LabelFormValues, labelSchema } from "@/lib/schemas/label";
 import { useAuthStore, useLabelDraftStore } from "@/lib/store";
 
@@ -41,12 +42,24 @@ const CIRCLE_SIZE =
 export default function CreateLabelScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { mutateAsync: createTags, isPending } = useCreateTag();
+  const { mutateAsync: createTags, isPending: isCreating } = useCreateTag();
+  const { mutateAsync: updateTag, isPending: isUpdating } = useUpdateTag();
   const setPendingLabel = useLabelDraftStore((s) => s.setPendingLabel);
+  const setRenamedLabel = useLabelDraftStore((s) => s.setRenamedLabel);
+
+  const params = useLocalSearchParams<{
+    id?: string;
+    name?: string;
+    icon?: string;
+  }>();
+  const editingId = params.id ? parseInt(params.id, 10) : undefined;
+  const isEditMode = editingId != null && !Number.isNaN(editingId);
 
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const theme = isDark ? Colors.dark : Colors.light;
+
+  const isPending = isCreating || isUpdating;
 
   const {
     control,
@@ -56,7 +69,10 @@ export default function CreateLabelScreen() {
     formState: { errors },
   } = useForm<LabelFormValues>({
     resolver: zodResolver(labelSchema),
-    defaultValues: { name: "", icon: DEFAULT_LABEL_ICON },
+    defaultValues: {
+      name: params.name ?? "",
+      icon: params.icon || DEFAULT_LABEL_ICON,
+    },
   });
 
   const selectedIcon = watch("icon");
@@ -66,11 +82,26 @@ export default function CreateLabelScreen() {
   const onSubmit = async (values: LabelFormValues) => {
     const label = values.name.trim();
     try {
-      await createTags([{ label, icon: values.icon, user_id: user?.id }]);
-      setPendingLabel(label);
+      if (isEditMode) {
+        await updateTag({
+          tagId: editingId,
+          updates: { label, icon: values.icon },
+        });
+        if (params.name && params.name !== label) {
+          setRenamedLabel({ from: params.name, to: label });
+        }
+      } else {
+        await createTags([{ label, icon: values.icon, user_id: user?.id }]);
+        setPendingLabel(label);
+      }
       router.back();
     } catch {
-      Alert.alert("Error", "Could not create label. Please try again.");
+      Alert.alert(
+        "Error",
+        isEditMode
+          ? "Could not update label. Please try again."
+          : "Could not create label. Please try again.",
+      );
     }
   };
 
@@ -95,7 +126,7 @@ export default function CreateLabelScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: theme.text }]}>
-          New Label
+          {isEditMode ? "Edit Label" : "New Label"}
         </Text>
 
         <TouchableOpacity

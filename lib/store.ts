@@ -21,4 +21,7 @@ export const useLabelDraftStore = create<LabelDraftStore>((set) => ({
   pendingLabel: null,
   setPendingLabel: (label) => set({ pendingLabel: label }),
   clearPendingLabel: () => set({ pendingLabel: null }),
+  renamedLabel: null,
+  setRenamedLabel: (payload) => set({ renamedLabel: payload }),
+  clearRenamedLabel: () => set({ renamedLabel: null }),
 }));

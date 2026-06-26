@@ -381,9 +381,6 @@ export default function SpotDetailScreen() {
 
             {/* Tags */}
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>
-                Tags
-              </Text>
               <TagPicker value={tagLabels} onChange={setTagLabels} theme={theme} />
             </View>
           </ScrollView>
