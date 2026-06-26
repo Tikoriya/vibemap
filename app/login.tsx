@@ -12,9 +12,9 @@ import {
   View,
 } from "react-native";
 
-import { authApi } from "@/lib/supabase/auth";
 import { Palette } from "@/constants/Colors";
 import { FontFamily } from "@/constants/Typography";
+import { authApi } from "@/lib/supabase/auth";
 
 type AuthStep = "default" | "email" | "sent";
 
@@ -33,7 +33,10 @@ export default function AuthScreen() {
     } catch (error) {
       const err = error as { code?: string };
       if (err?.code !== "ERR_REQUEST_CANCELED") {
-        Alert.alert("Sign in failed", "Could not sign in with Apple. Please try again.");
+        Alert.alert(
+          "Sign in failed",
+          "Could not sign in with Apple. Please try again.",
+        );
       }
     } finally {
       setIsLoading(false);
@@ -104,7 +107,10 @@ export default function AuthScreen() {
       router.replace("/(tabs)/cities");
     } catch (error) {
       console.error(error);
-      Alert.alert("Dev login failed", "Check credentials or Supabase connection.");
+      Alert.alert(
+        "Dev login failed",
+        "Check credentials or Supabase connection.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -116,7 +122,7 @@ export default function AuthScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={styles.logoSection}>
-        <Text style={styles.logoText}>VibeMap</Text>
+        <Text style={styles.logoText}>Tukka</Text>
         <Text style={styles.tagline}>
           Your personal map of places worth remembering.
         </Text>
@@ -126,8 +132,12 @@ export default function AuthScreen() {
         <View style={styles.authSection}>
           {Platform.OS === "ios" && (
             <AppleAuthentication.AppleAuthenticationButton
-              buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+              buttonType={
+                AppleAuthentication.AppleAuthenticationButtonType.CONTINUE
+              }
+              buttonStyle={
+                AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+              }
               cornerRadius={12}
               style={styles.appleButton}
               onPress={handleAppleSignIn}
@@ -196,16 +206,24 @@ export default function AuthScreen() {
           {password.length > 0 && (
             <>
               <TouchableOpacity
-                style={[styles.secondaryButton, isLoading && styles.buttonDisabled]}
+                style={[
+                  styles.secondaryButton,
+                  isLoading && styles.buttonDisabled,
+                ]}
                 onPress={handleSignInWithPassword}
                 disabled={isLoading}
                 activeOpacity={0.8}
               >
-                <Text style={styles.secondaryButtonText}>Sign in with password</Text>
+                <Text style={styles.secondaryButtonText}>
+                  Sign in with password
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.secondaryButton, isLoading && styles.buttonDisabled]}
+                style={[
+                  styles.secondaryButton,
+                  isLoading && styles.buttonDisabled,
+                ]}
                 onPress={handleCreateAccount}
                 disabled={isLoading}
                 activeOpacity={0.8}
@@ -230,7 +248,8 @@ export default function AuthScreen() {
           <Text style={styles.sentBody}>
             We sent a magic link to{"\n"}
             <Text style={styles.sentEmail}>{email}</Text>
-            {"\n\n"}Tap the link in your email to sign in — it expires in 1 hour.
+            {"\n\n"}Tap the link in your email to sign in — it expires in 1
+            hour.
           </Text>
 
           <TouchableOpacity style={styles.backButton} onPress={handleReset}>
@@ -246,7 +265,7 @@ export default function AuthScreen() {
           disabled={isLoading}
           activeOpacity={0.7}
         >
-          <Text style={styles.devButtonText}>DEV  —  Quick login</Text>
+          <Text style={styles.devButtonText}>DEV — Quick login</Text>
         </TouchableOpacity>
       )}
     </KeyboardAvoidingView>

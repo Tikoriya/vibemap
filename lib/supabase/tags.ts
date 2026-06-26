@@ -14,52 +14,32 @@ export const tagsApi = {
         return data || [];
     },
 
+    // Dedupe is enforced by the DB: the upsert_tags RPC inserts only the missing
+    // labels (on conflict (user_id, lower(label)) do nothing) and returns the
+    // canonical row for each requested label. A freeform "brunch" therefore
+    // resolves to the seeded "Brunch" without a client-side read-modify-write.
     createTags: async (tags: NewTag[], userId: string): Promise<Tag[]> => {
         const normalized = tags
-            .map((t) => ({ ...t, label: t.label.trim() }))
-            .filter((t) => t.label.length > 0);
+            .map((tag) => ({ label: tag.label.trim(), icon: tag.icon ?? null }))
+            .filter((tag) => tag.label.length > 0);
         if (normalized.length === 0) return [];
 
-        // Reuse a user's existing tag whenever the label matches case-insensitively
-        // so a freeform "brunch" resolves to the seeded "Brunch" instead of
-        // creating a second row. Uniqueness is enforced on (user_id, lower(label)).
-        const { data: existing, error: fetchError } = await supabase
-            .from("tags")
-            .select("*")
-            .eq("user_id", userId);
-        if (fetchError) throw fetchError;
+        const { data, error } = await supabase.rpc("upsert_tags", {
+            p_user_id: userId,
+            p_tags: normalized,
+        });
+        if (error) throw error;
+        return data ?? [];
+    },
 
-        const existingByLabel = new Map(
-            (existing ?? []).map((t) => [t.label.toLowerCase(), t]),
-        );
-
-        const result: Tag[] = [];
-        const toInsert: NewTag[] = [];
-        const seen = new Set<string>();
-
-        for (const tag of normalized) {
-            const key = tag.label.toLowerCase();
-            if (seen.has(key)) continue;
-            seen.add(key);
-
-            const match = existingByLabel.get(key);
-            if (match) {
-                result.push(match);
-            } else {
-                toInsert.push({ ...tag, user_id: userId });
-            }
-        }
-
-        if (toInsert.length > 0) {
-            const { data: inserted, error } = await supabase
-                .from("tags")
-                .insert(toInsert)
-                .select();
-            if (error) throw error;
-            result.push(...(inserted ?? []));
-        }
-
-        return result;
+    // Distinct tags attached to spots in a city, computed in Postgres (city_tags)
+    // rather than fetching every spot and flatMapping its tags on the client.
+    fetchCityTags: async (cityId: number): Promise<Tag[]> => {
+        const { data, error } = await supabase.rpc("city_tags", {
+            p_city_id: cityId,
+        });
+        if (error) throw error;
+        return data ?? [];
     },
 
     getTag: async (tagId: number): Promise<Tag | null>  => {

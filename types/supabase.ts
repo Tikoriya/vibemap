@@ -174,7 +174,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      filter_city_spots: {
+        Args: {
+          p_city_id: number
+          p_tag_ids?: number[]
+          p_match_all?: boolean
+          p_limit?: number
+          p_cursor_created_at?: string | null
+          p_cursor_id?: number | null
+        }
+        Returns: Database["public"]["Tables"]["spots"]["Row"][]
+      }
+      city_tags: {
+        Args: {
+          p_city_id: number
+        }
+        Returns: Database["public"]["Tables"]["tags"]["Row"][]
+      }
+      upsert_tags: {
+        Args: {
+          p_user_id: string
+          p_tags: Json
+        }
+        Returns: Database["public"]["Tables"]["tags"]["Row"][]
+      }
     }
     Enums: {
       [_ in never]: never

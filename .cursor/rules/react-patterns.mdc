@@ -111,3 +111,22 @@ lib/analytics.ts        → PostHog event calls
 ```
 
 Nothing in `app/` or `components/` imports directly from `utils/supabase.ts`. All data access goes through `lib/supabase/` or `lib/services/`.
+
+## Push Data Work into SQL
+
+Favor pushing filtering, sorting, aggregation, and pagination into SQL — PostgREST
+queries or RPC functions in `lib/supabase/*.ts` — rather than fetching all rows and
+running `flatMap`/`filter`/`reduce`/loops in the client. Use keyset pagination +
+`useInfiniteQuery` for lists. Derived or aggregated data (distinct values, counts,
+"items that have all of X") belongs in a query or RPC, not a client loop.
+
+```tsx
+// ❌ BAD — fetch everything, filter and derive in JS
+const spots = await spotsApi.fetchSpots(cityId);
+const filtered = spots.filter((spot) => spot.tags.some((t) => selected.includes(t.id)));
+const usedTags = spots.flatMap((spot) => spot.tags);
+
+// ✅ GOOD — the DB filters, paginates and aggregates
+const { spots } = useSpots({ cityId, selectedTagIds }); // useInfiniteQuery + keyset RPC
+const { tags } = useCityTags(cityId);                   // distinct tags via RPC
+```

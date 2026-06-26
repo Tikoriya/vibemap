@@ -9,6 +9,7 @@ export const useSpot = (cityId: string) => {
         mutationFn: spotsApi.createSpot,
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ['spots', cityId] });
+            void queryClient.invalidateQueries({ queryKey: ['city-tags', cityId] });
             void queryClient.invalidateQueries({ queryKey: ['cities'] });
         },
         onError: (error) => {
@@ -20,6 +21,7 @@ export const useSpot = (cityId: string) => {
         mutationFn: spotsApi.deleteSpot,
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ['spots', cityId] });
+            void queryClient.invalidateQueries({ queryKey: ['city-tags', cityId] });
             void queryClient.invalidateQueries({ queryKey: ['cities'] });
         },
         onError: (error) => {
@@ -31,6 +33,7 @@ export const useSpot = (cityId: string) => {
         mutationFn: spotsApi.updateSpot,
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ['spots', cityId] });
+            void queryClient.invalidateQueries({ queryKey: ['city-tags', cityId] });
         },
         onError: (error) => {
             console.error("Error updating spot:", error);

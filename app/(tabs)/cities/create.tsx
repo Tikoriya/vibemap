@@ -1,4 +1,4 @@
-import { AlertCircle, X } from "lucide-react-native";
+import { AlertCircle } from "lucide-react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,9 +17,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
 import { Colors, Palette } from "@/constants/Colors";
-import { Radius, Spacing } from "@/constants/Theme";
+import { Spacing } from "@/constants/Theme";
 import { Typography } from "@/constants/Typography";
 import { useCities } from "@/hooks/useCities";
 import googleApi from "@/lib/services/google";
@@ -224,14 +225,17 @@ export default function CreateCityScreen() {
 
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.topBar}>
-          <TouchableOpacity
-            style={styles.closeButton}
+          <IconButton
+            icon="close"
             onPress={() => router.back()}
+            accessibilityLabel="Close"
+            style={styles.closeButton}
+            color={Palette.paper0}
+            size={36}
+            iconSize={22}
             activeOpacity={0.8}
             hitSlop={8}
-          >
-            <X size={22} color={Palette.paper0} />
-          </TouchableOpacity>
+          />
         </View>
 
         <KeyboardAvoidingView
@@ -352,12 +356,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.space2,
   },
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.full,
     backgroundColor: "rgba(20,32,26,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
   },
   body: {
     flex: 1,

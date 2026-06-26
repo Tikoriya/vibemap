@@ -1,6 +1,7 @@
 import { EditablePhoto, SpotPhotoEditor } from "@/components/SpotPhotoEditor";
 import { SpotPhotoGallery } from "@/components/SpotPhotoGallery";
 import { TagPicker } from "@/components/TagPicker";
+import { IconButton } from "@/components/ui/IconButton";
 import { resolveTagIcon } from "@/components/ui/IconLabel";
 import { Input } from "@/components/ui/Input";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
@@ -22,13 +23,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  ChevronLeft,
-  MapPin,
-  Navigation,
-  Pencil,
-  Star,
-} from "lucide-react-native";
+import { MapPin, Navigation, Star } from "lucide-react-native";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -526,21 +521,26 @@ export default function SpotDetailScreen() {
 
       {/* Floating header controls */}
       <View style={[styles.floatingHeader, { top: insets.top + 8 }]}>
-        <TouchableOpacity
-          style={styles.floatingButton}
+        <IconButton
+          icon="back"
           onPress={() => router.back()}
-          activeOpacity={0.8}
-        >
-          <ChevronLeft size={22} color={Palette.paper0} strokeWidth={2.2} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
+          accessibilityLabel="Go back"
           style={styles.floatingButton}
-          onPress={enterEditMode}
+          color={Palette.paper0}
+          iconSize={22}
+          strokeWidth={2.2}
           activeOpacity={0.8}
-        >
-          <Pencil size={18} color={Palette.paper0} strokeWidth={2.2} />
-        </TouchableOpacity>
+        />
+
+        <IconButton
+          icon="edit"
+          onPress={enterEditMode}
+          accessibilityLabel="Edit spot"
+          style={styles.floatingButton}
+          color={Palette.paper0}
+          strokeWidth={2.2}
+          activeOpacity={0.8}
+        />
       </View>
     </View>
   );
@@ -632,11 +632,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   floatingButton: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.full,
-    alignItems: "center",
-    justifyContent: "center",
     backgroundColor: "rgba(20, 32, 26, 0.45)",
   },
   tagsRow: {

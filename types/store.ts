@@ -17,6 +17,16 @@ export type AuthState = {
   setLoading: (loading: boolean) => void;
 };
 
+// Local-only UI preferences persisted to device storage (AsyncStorage). Holds
+// the global filter-bar open/closed state (shared across all city views) and a
+// map of cityId -> last-opened epoch ms used to order the cities grid.
+export type UiPrefsStore = {
+  filtersOpen: boolean;
+  setFiltersOpen: (open: boolean) => void;
+  cityLastOpened: Record<string, number>;
+  markCityOpened: (cityId: string) => void;
+};
+
 // Bridges the freshly created label from the "New Label" modal back to the tag
 // picker underneath it, so it can be auto-selected once the modal dismisses.
 // `renamedLabel` carries an edit (old -> new) so the picker can keep a selected
