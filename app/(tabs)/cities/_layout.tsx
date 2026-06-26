@@ -9,6 +9,10 @@ export default function CitiesStackLayout() {
         options={{ headerShown: false, title: "Cities" }}
       />
       <Stack.Screen name="create" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="label"
+        options={{ headerShown: false, presentation: "modal" }}
+      />
       <Stack.Screen name="[cityid]" options={{ headerShown: false }} />
     </Stack>
   );

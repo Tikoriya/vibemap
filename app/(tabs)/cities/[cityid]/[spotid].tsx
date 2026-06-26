@@ -1,7 +1,7 @@
 import { EditablePhoto, SpotPhotoEditor } from "@/components/SpotPhotoEditor";
 import { SpotPhotoGallery } from "@/components/SpotPhotoGallery";
 import { TagPicker } from "@/components/TagPicker";
-import { ICON_LABELS, IconLabelKey } from "@/components/ui/IconLabel";
+import { resolveTagIcon } from "@/components/ui/IconLabel";
 import { Input } from "@/components/ui/Input";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import { Colors, Palette } from "@/constants/Colors";
@@ -22,13 +22,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  ChevronLeft,
-  MapPin,
-  Navigation,
-  Pencil,
-  Tag as TagIcon,
-} from "lucide-react-native";
+import { ChevronLeft, MapPin, Navigation, Pencil } from "lucide-react-native";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -57,11 +51,6 @@ const SHEET_OVERLAP = 28;
 type SpotRouteParams = {
   cityid: string;
   spotid: string;
-};
-
-const getTagIcon = (label: string) => {
-  const key = label.trim().toLowerCase();
-  return key in ICON_LABELS ? ICON_LABELS[key as IconLabelKey].icon : TagIcon;
 };
 
 export default function SpotDetailScreen() {
@@ -463,7 +452,7 @@ export default function SpotDetailScreen() {
           {tags.length > 0 ? (
             <View style={styles.tagsRow}>
               {tags.map((tag) => {
-                const Icon = getTagIcon(tag.label);
+                const Icon = resolveTagIcon(tag);
                 return (
                   <View
                     key={tag.id}

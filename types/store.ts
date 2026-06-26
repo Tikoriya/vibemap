@@ -16,3 +16,11 @@ export type AuthState = {
   setSession: (session: Session | null) => void;
   setLoading: (loading: boolean) => void;
 };
+
+// Bridges the freshly created label from the "New Label" modal back to the tag
+// picker underneath it, so it can be auto-selected once the modal dismisses.
+export type LabelDraftStore = {
+  pendingLabel: string | null;
+  setPendingLabel: (label: string) => void;
+  clearPendingLabel: () => void;
+};

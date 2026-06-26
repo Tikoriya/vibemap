@@ -1,4 +1,6 @@
-import { LucideIcon, Plus, Tag as TagIcon } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import { LucideIcon, Plus } from "lucide-react-native";
+import { useEffect } from "react";
 import {
   Dimensions,
   StyleSheet,
@@ -9,9 +11,11 @@ import {
 
 import { ICON_LABELS, IconLabel } from "@/components/ui/IconLabel";
 import { Colors, Palette } from "@/constants/Colors";
+import { getLabelIcon } from "@/constants/LabelIcons";
 import { Radius, Spacing } from "@/constants/Theme";
 import { FontFamily } from "@/constants/Typography";
 import { useTags } from "@/hooks/useTags";
+import { useLabelDraftStore } from "@/lib/store";
 
 type PickerTag = {
   label: string;
@@ -43,17 +47,27 @@ const PREDEFINED_ICON_TAGS: PickerTag[] = (
 export const TagPicker = (props: Props) => {
   const { value, onChange, theme } = props;
   const { tags } = useTags();
+  const router = useRouter();
+  const pendingLabel = useLabelDraftStore((s) => s.pendingLabel);
+  const clearPendingLabel = useLabelDraftStore((s) => s.clearPendingLabel);
+
+  // Auto-select a label just created via the "New Label" modal.
+  useEffect(() => {
+    if (!pendingLabel) return;
+    if (!value.includes(pendingLabel)) onChange([...value, pendingLabel]);
+    clearPendingLabel();
+  }, [pendingLabel, value, onChange, clearPendingLabel]);
 
   const predefinedLabels = new Set(
     PREDEFINED_ICON_TAGS.map((t) => t.label.toLowerCase()),
   );
 
-  // User-created tags only carry a label, so they fall back to a generic icon.
+  // User-created tags render their chosen icon, falling back to a generic one.
   const customTags: PickerTag[] = (tags ?? [])
     .filter((t) => !predefinedLabels.has(t.label.toLowerCase()))
     .map((t) => ({
       label: t.label,
-      icon: TagIcon,
+      icon: getLabelIcon(t.icon),
     }));
 
   const allTags = [...PREDEFINED_ICON_TAGS, ...customTags];
@@ -67,7 +81,7 @@ export const TagPicker = (props: Props) => {
   };
 
   const handleAddLabel = () => {
-    console.log("Add custom label tapped");
+    router.push("/cities/label");
   };
 
   return (

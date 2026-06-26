@@ -19,6 +19,7 @@ import {
 } from "react-native";
 
 import { Colors } from "@/constants/Colors";
+import { getLabelIcon } from "@/constants/LabelIcons";
 import { Radius } from "@/constants/Theme";
 
 export type IconLabelPreset = {
@@ -44,6 +45,22 @@ export const ICON_LABELS = {
 
 export type IconLabelKey = keyof typeof ICON_LABELS;
 
+/**
+ * Resolves a tag's display icon: the user-chosen `icon` wins, then a predefined
+ * preset matched by label, then the generic default. Use this everywhere a stored
+ * tag is rendered so user-created labels show their chosen icon.
+ */
+export const resolveTagIcon = (tag: {
+  label: string;
+  icon?: string | null;
+}): LucideIcon => {
+  if (tag.icon) return getLabelIcon(tag.icon);
+  const key = tag.label.trim().toLowerCase();
+  return key in ICON_LABELS
+    ? ICON_LABELS[key as IconLabelKey].icon
+    : getLabelIcon(null);
+};
+
 type IconLabelProps = {
   /** A key from the precreated `ICON_LABELS` registry. */
   preset?: IconLabelKey;
@@ -57,11 +74,22 @@ type IconLabelProps = {
   color?: string;
   /** Circle fill color. Defaults to the soft ochre surface. */
   background?: string;
+  /** Icon stroke width. Defaults to 2. */
+  strokeWidth?: number;
   style?: StyleProp<ViewStyle>;
 };
 
 export const IconLabel = (props: IconLabelProps) => {
-  const { preset, icon, label, size = 28, color, background, style } = props;
+  const {
+    preset,
+    icon,
+    label,
+    size = 28,
+    color,
+    background,
+    strokeWidth = 2,
+    style,
+  } = props;
 
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? Colors.dark : Colors.light;
@@ -91,7 +119,7 @@ export const IconLabel = (props: IconLabelProps) => {
       <Icon
         size={Math.round(size * 0.55)}
         color={color ?? theme.ochre}
-        strokeWidth={2}
+        strokeWidth={strokeWidth}
       />
     </View>
   );

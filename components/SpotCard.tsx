@@ -9,15 +9,11 @@ import {
   View,
 } from "react-native";
 
-import {
-  ICON_LABELS,
-  IconLabel,
-  IconLabelKey,
-} from "@/components/ui/IconLabel";
+import { IconLabel, resolveTagIcon } from "@/components/ui/IconLabel";
 import { Colors } from "@/constants/Colors";
 import { Elevation, Radius, Spacing } from "@/constants/Theme";
 import { Typography } from "@/constants/Typography";
-import { Spot, Tag } from "@/types";
+import { Spot } from "@/types";
 
 type SpotCardProps = {
   spot: Spot;
@@ -28,13 +24,6 @@ type SpotCardProps = {
 
 const THUMB_SIZE = 76;
 
-// Maps a tag onto a precreated icon-label preset by its label. Tags without a
-// matching preset are skipped, so the row fills in as the registry grows.
-const tagToPreset = (tag: Tag): IconLabelKey | null => {
-  const key = tag.label.trim().toLowerCase();
-  return key in ICON_LABELS ? (key as IconLabelKey) : null;
-};
-
 export const SpotCard = (props: SpotCardProps) => {
   const { spot, onPress, onDelete, onMapPress } = props;
 
@@ -42,9 +31,6 @@ export const SpotCard = (props: SpotCardProps) => {
   const theme = colorScheme === "dark" ? Colors.dark : Colors.light;
 
   const tags = spot.tags ?? [];
-  const presets = tags
-    .map(tagToPreset)
-    .filter((preset): preset is IconLabelKey => preset !== null);
 
   const coverUrl = [...(spot.spot_photos ?? [])].sort(
     (a, b) => a.position - b.position,
@@ -84,10 +70,14 @@ export const SpotCard = (props: SpotCardProps) => {
           {spot.name}
         </Text>
 
-        {presets.length > 0 ? (
+        {tags.length > 0 ? (
           <View style={styles.iconRow}>
-            {presets.map((preset, index) => (
-              <IconLabel key={`${preset}-${index}`} preset={preset} />
+            {tags.map((tag) => (
+              <IconLabel
+                key={tag.id}
+                icon={resolveTagIcon(tag)}
+                label={tag.label}
+              />
             ))}
           </View>
         ) : null}

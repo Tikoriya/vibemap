@@ -1,4 +1,4 @@
-import { AuthState, CityStore } from "@/types/store";
+import { AuthState, CityStore, LabelDraftStore } from "@/types/store";
 import { create } from "zustand";
 
 export const useCityStore = create<CityStore>((set) => ({
@@ -15,4 +15,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user) => set({ user }),
   setSession: (session) => set({ session }),
   setLoading: (loading) => set({ loading }),
+}));
+
+export const useLabelDraftStore = create<LabelDraftStore>((set) => ({
+  pendingLabel: null,
+  setPendingLabel: (label) => set({ pendingLabel: label }),
+  clearPendingLabel: () => set({ pendingLabel: null }),
 }));

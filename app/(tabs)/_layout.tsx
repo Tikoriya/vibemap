@@ -14,7 +14,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuthStore } from '@/lib/store';
 
 // Nested cities-stack routes that should take over the full screen (no tab bar).
-const FULLSCREEN_CITIES_ROUTES = ['create', '[spotid]'];
+const FULLSCREEN_CITIES_ROUTES = ['create', 'label', '[spotid]'];
 
 type NestedRoute = {
   name?: string;
