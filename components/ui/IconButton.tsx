@@ -40,7 +40,10 @@ type IconButtonProps = {
   icon: IconButtonIcon;
   onPress: () => void;
   accessibilityLabel: string;
-  /** Icon stroke color. Defaults to the theme accent. */
+  /**
+   * Icon stroke color. Defaults to `theme.text` — the high-contrast on-surface
+   * color, so the glyph reads as an active control in both light and dark mode.
+   */
   color?: string;
   /** Circle fill color. Defaults to the elevated surface. */
   background?: string;
@@ -96,7 +99,7 @@ export const IconButton = (props: IconButtonProps) => {
     >
       <Icon
         size={iconSize}
-        color={color ?? theme.accent}
+        color={color ?? theme.text}
         strokeWidth={strokeWidth}
       />
     </TouchableOpacity>

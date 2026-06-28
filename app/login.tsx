@@ -1,4 +1,3 @@
-import * as AppleAuthentication from "expo-apple-authentication";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -24,24 +23,6 @@ export default function AuthScreen() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-
-  const handleAppleSignIn = async () => {
-    try {
-      setIsLoading(true);
-      await authApi.signInWithApple();
-      router.replace("/(tabs)/cities");
-    } catch (error) {
-      const err = error as { code?: string };
-      if (err?.code !== "ERR_REQUEST_CANCELED") {
-        Alert.alert(
-          "Sign in failed",
-          "Could not sign in with Apple. Please try again.",
-        );
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSendMagicLink = async () => {
     const trimmedEmail = email.trim();
@@ -130,20 +111,6 @@ export default function AuthScreen() {
 
       {step === "default" && (
         <View style={styles.authSection}>
-          {Platform.OS === "ios" && (
-            <AppleAuthentication.AppleAuthenticationButton
-              buttonType={
-                AppleAuthentication.AppleAuthenticationButtonType.CONTINUE
-              }
-              buttonStyle={
-                AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-              }
-              cornerRadius={12}
-              style={styles.appleButton}
-              onPress={handleAppleSignIn}
-            />
-          )}
-
           <TouchableOpacity
             style={styles.googleButton}
             disabled={isLoading}
@@ -302,10 +269,6 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     gap: 12,
-  },
-  appleButton: {
-    width: "100%",
-    height: 52,
   },
   googleButton: {
     width: "100%",

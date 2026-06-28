@@ -1,5 +1,3 @@
-import * as AppleAuthentication from "expo-apple-authentication";
-
 import { supabase } from "@/utils/supabase";
 
 export const authApi = {
@@ -32,27 +30,8 @@ export const authApi = {
     return data;
   },
 
-  // TODO: configure before enabling — requires EAS Build + Apple Developer credentials in Supabase
-  signInWithApple: async () => {
-    const credential = await AppleAuthentication.signInAsync({
-      requestedScopes: [
-        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-        AppleAuthentication.AppleAuthenticationScope.EMAIL,
-      ],
-    });
-    if (!credential.identityToken) {
-      throw new Error("Apple Sign In returned no identity token");
-    }
-    const { data, error } = await supabase.auth.signInWithIdToken({
-      provider: "apple",
-      token: credential.identityToken,
-    });
-    if (error) throw error;
-    return data;
-  },
-
-  // TODO: configure before enabling — requires EAS Build + Google Cloud Console client IDs in .env
-  // signInWithGoogle: async () => { ... },
+  // Apple/Google sign-in removed for now — both require a paid Apple Developer
+  // account (Sign In with Apple entitlement) / native config. Re-add when enabling them.
 
   logout: async () => {
     const { error } = await supabase.auth.signOut();

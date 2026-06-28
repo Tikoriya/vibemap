@@ -181,8 +181,8 @@ export default function CityScreen() {
           style={[styles.addButton, { backgroundColor: theme.accent }]}
           onPress={() =>
             router.push({
-              pathname: "/cities/[cityid]/create",
-              params: { cityid },
+              pathname: "/cities/create-spot",
+              params: { cityId: cityid, cityName },
             })
           }
           activeOpacity={0.8}

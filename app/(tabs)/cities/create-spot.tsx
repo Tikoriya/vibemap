@@ -2,17 +2,19 @@ import { PlacesAutocompleteField } from "@/components/GoogleAutoComplete";
 import { ImportedPhotos } from "@/components/ImportedPhotos";
 import { ImportLinkField } from "@/components/ImportLinkField";
 import { TagPicker } from "@/components/TagPicker";
+import { CitySelectField } from "@/components/ui/CitySelectField";
 import { Input } from "@/components/ui/Input";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import { Colors, Palette } from "@/constants/Colors";
 import { Radius, Spacing } from "@/constants/Theme";
 import { FontFamily, Typography } from "@/constants/Typography";
+import { useCities } from "@/hooks/useCities";
 import { useCreateTag } from "@/hooks/useCreateTag";
 import { useSpot } from "@/hooks/useSpot";
-import { SpotFormValues, spotSchema } from "@/lib/schemas/spot";
-import { useAuthStore } from "@/lib/store";
+import { CreateSpotFormValues, createSpotSchema } from "@/lib/schemas/spot";
 import { uploadPhotoFromUrl } from "@/lib/services/photoUpload";
+import { useAuthStore } from "@/lib/store";
 import { spotPhotosApi } from "@/lib/supabase/spot_photos";
 import { tagsSpotsApi } from "@/lib/supabase/tags_spots";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,7 +38,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type CreateSpotRouteParams = {
-  cityid: string;
+  // Present when launched from inside a city; absent from the global + button.
+  cityId?: string;
+  cityName?: string;
 };
 
 type SpotTab = "manual" | "import";
@@ -48,8 +52,10 @@ const SPOT_TABS: { key: SpotTab; label: string }[] = [
 
 export default function CreateSpotScreen() {
   const router = useRouter();
-  const { cityid } = useLocalSearchParams<CreateSpotRouteParams>();
-  const { createSpot } = useSpot(cityid);
+  const { cityId: cityIdParam } = useLocalSearchParams<CreateSpotRouteParams>();
+  const presetCityId = cityIdParam ? parseInt(cityIdParam) : undefined;
+
+  const { cities } = useCities();
   const { user } = useAuthStore();
   const { mutateAsync: createTags } = useCreateTag();
   const queryClient = useQueryClient();
@@ -73,17 +79,42 @@ export default function CreateSpotScreen() {
     control,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
-  } = useForm<SpotFormValues>({
-    resolver: zodResolver(spotSchema),
+  } = useForm<CreateSpotFormValues>({
+    resolver: zodResolver(createSpotSchema),
     defaultValues: {
       name: "",
       address: "",
       latitude: 0,
       longitude: 0,
       notes: "",
+      cityId: presetCityId,
     },
   });
+
+  const selectedCityId = watch("cityId");
+  const { createSpot } = useSpot(selectedCityId ? String(selectedCityId) : "");
+
+  // Rendered inside each tab view; all instances share the same form field, so
+  // a selected city persists when switching between Manual and Import.
+  const renderCityField = () => (
+    <View style={styles.field}>
+      <Controller
+        control={control}
+        name="cityId"
+        render={({ field: { onChange, value } }) => (
+          <CitySelectField
+            cities={cities ?? []}
+            value={value ?? null}
+            onChange={(id) => onChange(id)}
+            error={errors.cityId?.message}
+            locked={presetCityId !== undefined}
+          />
+        )}
+      />
+    </View>
+  );
 
   const handleResetImport = () => {
     setImportedName(undefined);
@@ -95,7 +126,7 @@ export default function CreateSpotScreen() {
     setValue("longitude", 0);
   };
 
-  const onSubmit = async (values: SpotFormValues) => {
+  const onSubmit = async (values: CreateSpotFormValues) => {
     try {
       const createdSpot = await createSpot({
         name: values.name,
@@ -103,7 +134,7 @@ export default function CreateSpotScreen() {
         address: values.address,
         latitude: values.latitude,
         longitude: values.longitude,
-        city_id: parseInt(cityid),
+        city_id: values.cityId,
       });
 
       if (tagLabels.length > 0) {
@@ -136,7 +167,9 @@ export default function CreateSpotScreen() {
         }
       }
 
-      await queryClient.invalidateQueries({ queryKey: ["spots", cityid] });
+      await queryClient.invalidateQueries({
+        queryKey: ["spots", String(values.cityId)],
+      });
       router.back();
     } catch {
       Alert.alert("Error", "Could not save spot. Please try again.");
@@ -184,6 +217,9 @@ export default function CreateSpotScreen() {
           {/* Manual entry */}
           {activeTab === "manual" ? (
             <>
+              {/* City — locked when opened from a city, a dropdown otherwise */}
+              {renderCityField()}
+
               {/* Name */}
               <View style={styles.field}>
                 <Controller
@@ -230,8 +266,11 @@ export default function CreateSpotScreen() {
             </>
           ) : (
             /* Import from link */
-            <View style={styles.field}>
-              {importedName ? (
+            <>
+              {renderCityField()}
+
+              <View style={styles.field}>
+                {importedName ? (
                 <View
                   style={[
                     styles.importedCard,
@@ -286,7 +325,8 @@ export default function CreateSpotScreen() {
                   }}
                 />
               )}
-            </View>
+              </View>
+            </>
           )}
 
           {/* Notes */}
@@ -311,11 +351,7 @@ export default function CreateSpotScreen() {
 
           {/* Tags */}
           <View style={styles.field}>
-            <TagPicker
-              value={tagLabels}
-              onChange={setTagLabels}
-              theme={theme}
-            />
+            <TagPicker value={tagLabels} onChange={setTagLabels} theme={theme} />
           </View>
 
           <TouchableOpacity

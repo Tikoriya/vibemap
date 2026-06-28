@@ -63,6 +63,58 @@ All keys are hardcoded directly in the source for now — no `.env` setup requir
 
 ---
 
+## Build & Run on a Device (dev build)
+
+This app uses native modules (e.g. `react-native-maps`), so it can't run in Expo Go — it
+needs a **development build**. Most days you don't rebuild; you just start the dev server
+and open the build you already installed.
+
+### Daily loop (no native changes)
+
+```bash
+npx expo start
+```
+
+Then press `i` (Simulator) or open the installed dev build on your phone.
+
+### When you changed native stuff (added/removed a native package or an `app.json` plugin)
+
+```bash
+npx expo prebuild --clean   # regenerate ios/ + android/ from scratch
+npx expo run:ios            # build + install on the iOS Simulator (no Apple account needed)
+```
+
+### To install on your physical iPhone
+
+1. One-time signing setup — open the native project and pick a Team:
+
+```bash
+open ios/vibemap.xcworkspace
+```
+
+   In Xcode → **vibemap** target → **Signing & Capabilities** → check **Automatically
+   manage signing** → set **Team** to your Apple ID. (Free personal team works; the build
+   expires after 7 days.)
+
+2. Build to the device:
+
+```bash
+npx expo run:ios --device
+```
+
+### Notes
+
+- `run:ios` defaults to a plugged-in iPhone if one is connected — that path needs the
+  signing Team above. Unplug it (or use the Simulator) to skip signing.
+- **Apple & Google sign-in are removed for now.** `@react-native-google-signin/google-signin`
+  broke `pod install`, and `expo-apple-authentication` adds the *Sign In with Apple*
+  entitlement, which a **free** Apple account can't sign (it needs the paid Developer
+  Program). Reinstall those packages and re-wire the login screen when you enroll in the
+  paid program and actually use Apple/Google login.
+- TestFlight / EAS Build is only needed later, to distribute to other people's phones.
+
+---
+
 ## What is VibeMap?
 
 VibeMap is a mobile app for saving the places that matter to you — not just the address, but the feeling. Bars with great cocktails. Coffee shops where you can actually work. Restaurants worth the hype. Hidden gems you stumbled onto. Any spot you want to remember and find again.
