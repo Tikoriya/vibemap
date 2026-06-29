@@ -221,11 +221,11 @@ export const TagPicker = (props: Props) => {
           accessibilityLabel={isEditing ? "Done editing labels" : "Edit labels"}
         >
           {isEditing ? (
-            <Check size={15} color={theme.accent} strokeWidth={2.4} />
+            <Check size={15} color={theme.text} strokeWidth={2.4} />
           ) : (
-            <Pencil size={14} color={theme.accent} strokeWidth={2.4} />
+            <Pencil size={14} color={theme.text} strokeWidth={2.4} />
           )}
-          <Text style={[styles.editButtonText, { color: theme.accent }]}>
+          <Text style={[styles.editButtonText, { color: theme.text }]}>
             {isEditing ? "Done" : "Edit"}
           </Text>
         </TouchableOpacity>

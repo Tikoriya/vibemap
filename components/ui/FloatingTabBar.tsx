@@ -3,6 +3,7 @@ import {
   BottomTabBarProps,
 } from "@react-navigation/bottom-tabs";
 import { getFocusedRouteNameFromRoute } from "@react-navigation/native";
+import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Compass, LucideIcon, MapPin, Plus, User } from "lucide-react-native";
@@ -147,8 +148,15 @@ export const FloatingTabBar = (props: BottomTabBarProps) => {
       pointerEvents="box-none"
     >
       <View
-        style={[styles.bar, { backgroundColor: theme.surface }, Elevation.float]}
+        style={[styles.bar, { backgroundColor: theme.glass }, Elevation.float]}
       >
+        <BlurView
+          tint={isDark ? "dark" : "light"}
+          intensity={isDark ? 40 : 60}
+          style={[styles.glass, { borderColor: theme.glassBorder }]}
+          pointerEvents="none"
+        />
+
         {LEADING_SLOTS.map(renderSlot)}
 
         <Pressable
@@ -183,6 +191,13 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
     paddingHorizontal: Spacing.space3,
     paddingVertical: Spacing.space2,
+  },
+  glass: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: Radius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+    zIndex: -1,
   },
   slot: {
     flexDirection: "row",

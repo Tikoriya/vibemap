@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "vibemap",
-    "slug": "vibemap",
+    "name": "Tukka",
+    "slug": "tukka",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "vibemap",
+    "scheme": "tukka",
     "runtimeVersion": {
       "policy": "sdkVersion"
     },
@@ -13,14 +13,14 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.vibemap"
+      "bundleIdentifier": "com.tukka.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.vibemap"
+      "package": "com.tukka.app"
     },
     "web": {
       "bundler": "metro",

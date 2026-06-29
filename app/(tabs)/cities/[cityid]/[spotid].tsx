@@ -75,6 +75,8 @@ export default function SpotDetailScreen() {
   const [removedPhotos, setRemovedPhotos] = useState<
     { id: number; url: string }[]
   >([]);
+  const [initialTagLabels, setInitialTagLabels] = useState<string[]>([]);
+  const [initialPhotos, setInitialPhotos] = useState<EditablePhoto[]>([]);
 
   const { updateSpot } = useSpot(cityid);
   const { mutateAsync: createTags } = useCreateTag();
@@ -95,7 +97,7 @@ export default function SpotDetailScreen() {
     control,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<SpotFormValues>({
     resolver: zodResolver(spotSchema),
     defaultValues: {
@@ -117,8 +119,12 @@ export default function SpotDetailScreen() {
       notes: spot.notes ?? "",
     });
     const existingTags = ((spot as any).tags as Tag[] | undefined) ?? [];
-    setTagLabels(existingTags.map((t) => t.label));
-    setEditPhotos(spotPhotos.map((p) => ({ id: p.id, uri: p.url })));
+    const existingLabels = existingTags.map((t) => t.label);
+    const existingPhotos = spotPhotos.map((p) => ({ id: p.id, uri: p.url }));
+    setTagLabels(existingLabels);
+    setInitialTagLabels(existingLabels);
+    setEditPhotos(existingPhotos);
+    setInitialPhotos(existingPhotos);
     setRemovedPhotos([]);
     setIsEditing(true);
   };
@@ -281,6 +287,19 @@ export default function SpotDetailScreen() {
 
   const tags = ((spot as any).tags as Tag[] | undefined) ?? [];
 
+  const tagsChanged =
+    tagLabels.length !== initialTagLabels.length ||
+    !tagLabels.every((label) => initialTagLabels.includes(label));
+  const photosChanged =
+    removedPhotos.length > 0 ||
+    editPhotos.length !== initialPhotos.length ||
+    editPhotos.some((photo, index) => {
+      const original = initialPhotos[index];
+      return !original || original.id !== photo.id || original.uri !== photo.uri;
+    });
+  const hasChanges = isDirty || tagsChanged || photosChanged;
+  const canSave = hasChanges && !isSubmitting;
+
   if (isEditing) {
     return (
       <SafeAreaView
@@ -296,16 +315,22 @@ export default function SpotDetailScreen() {
 
           <TouchableOpacity
             onPress={handleSubmit(onSave)}
-            disabled={isSubmitting}
-            activeOpacity={0.7}
+            disabled={!canSave}
+            activeOpacity={0.85}
+            style={[
+              styles.saveButton,
+              {
+                backgroundColor: canSave ? theme.accent : theme.surfaceElevated,
+              },
+            ]}
           >
             {isSubmitting ? (
-              <ActivityIndicator size="small" color={theme.accent} />
+              <ActivityIndicator size="small" color={theme.onAccent} />
             ) : (
               <Text
                 style={[
-                  styles.headerActionText,
-                  { color: theme.accent, textAlign: "right" },
+                  styles.saveButtonText,
+                  { color: canSave ? theme.onAccent : theme.textMuted },
                 ]}
               >
                 Save
@@ -492,10 +517,10 @@ export default function SpotDetailScreen() {
                 return (
                   <View
                     key={tag.id}
-                    style={[styles.tagPill, { backgroundColor: theme.accentSubtle }]}
+                    style={[styles.tagPill, { backgroundColor: theme.ochreSubtle }]}
                   >
-                    <Icon size={14} color={theme.accent} strokeWidth={2} />
-                    <Text style={[styles.tagPillText, { color: theme.accent }]}>
+                    <Icon size={14} color={theme.ochre} strokeWidth={2} />
+                    <Text style={[styles.tagPillText, { color: theme.ochre }]}>
                       {tag.label}
                     </Text>
                   </View>
@@ -570,6 +595,18 @@ const styles = StyleSheet.create({
   headerActionText: {
     fontFamily: FontFamily.medium,
     fontSize: 16,
+  },
+  saveButton: {
+    borderRadius: Radius.full,
+    paddingHorizontal: Spacing.space4,
+    paddingVertical: Spacing.space2,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 72,
+  },
+  saveButtonText: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 15,
   },
   editContent: {
     paddingHorizontal: Spacing.space4,

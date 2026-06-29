@@ -104,20 +104,20 @@ export default function CityScreen() {
         key={tag.id}
         style={[
           styles.tagPill,
-          { backgroundColor: active ? theme.accent : theme.accentSubtle },
+          { backgroundColor: active ? theme.ochre : theme.ochreSubtle },
         ]}
         onPress={() => toggleTag(tag.id)}
         activeOpacity={0.7}
       >
         <Icon
           size={14}
-          color={active ? Palette.paper100 : theme.accent}
+          color={active ? Palette.paper100 : theme.ochre}
           strokeWidth={2}
         />
         <Text
           style={[
             styles.tagPillText,
-            { color: active ? Palette.paper100 : theme.accent },
+            { color: active ? Palette.paper100 : theme.ochre },
           ]}
         >
           {tag.label}

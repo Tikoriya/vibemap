@@ -31,7 +31,7 @@ export const useUiPrefsStore = create<UiPrefsStore>()(
         })),
     }),
     {
-      name: "vibemap-ui-prefs",
+      name: "tukka-ui-prefs",
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

@@ -63,6 +63,10 @@ export type ThemeColors = {
   tabIconDefault: string;
   tabIconSelected: string;
   onAccent: string;
+  /** Translucent surface tint layered over a blur for frosted-glass chrome. */
+  glass: string;
+  /** Hairline edge that catches light on the rim of glass chrome. */
+  glassBorder: string;
   success: string;
   warning: string;
   error: string;
@@ -88,6 +92,10 @@ export const Colors: { light: ThemeColors; dark: ThemeColors } = {
     tabIconDefault: Palette.muted,
     tabIconSelected: Palette.forest800,
     onAccent: Palette.paper100,
+    // paper0 #FBFAF5 over a light blur
+    glass: 'rgba(251, 250, 245, 0.62)',
+    // forest800 #1C2A23 rim
+    glassBorder: 'rgba(28, 42, 35, 0.10)',
     success: Palette.open,
     warning: Palette.caution,
     error: Palette.closed,
@@ -111,6 +119,10 @@ export const Colors: { light: ThemeColors; dark: ThemeColors } = {
     tabIconDefault: Palette.sage400,
     tabIconSelected: Palette.paper100,
     onAccent: Palette.paper100,
+    // forest800 #1C2A23 over a dark blur
+    glass: 'rgba(28, 42, 35, 0.55)',
+    // paper100 #F4F1E8 rim catches light against ink900
+    glassBorder: 'rgba(244, 241, 232, 0.14)',
     success: Palette.open,
     warning: Palette.caution,
     error: Palette.closed,

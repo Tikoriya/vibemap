@@ -5,7 +5,7 @@ export const authApi = {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: "vibemap://auth/callback",
+        emailRedirectTo: "tukka://auth/callback",
         shouldCreateUser: true,
       },
     });
