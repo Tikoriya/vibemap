@@ -26,9 +26,12 @@ async function readFunctionErrorMessage(
   }
 }
 
-export async function importFromLink(url: string): Promise<ImportedSpot> {
+async function invokeParseLink(
+  body: { url: string } | { image: string; mimeType?: string },
+  fallbackMessage: string,
+): Promise<ImportedSpot> {
   const { data, error } = await supabase.functions.invoke("parse-link", {
-    body: { url },
+    body,
   });
 
   if (error) {
@@ -36,7 +39,7 @@ export async function importFromLink(url: string): Promise<ImportedSpot> {
       const message = await readFunctionErrorMessage(error);
       if (message) throw new Error(message);
     }
-    throw new Error(error.message ?? "Failed to import from link");
+    throw new Error(error.message ?? fallbackMessage);
   }
 
   if (data?.error) {
@@ -44,4 +47,17 @@ export async function importFromLink(url: string): Promise<ImportedSpot> {
   }
 
   return data as ImportedSpot;
+}
+
+export async function importFromLink(url: string): Promise<ImportedSpot> {
+  return invokeParseLink({ url }, "Failed to import from link");
+}
+
+// Reads a place out of a screenshot (e.g. an Instagram post) via Gemini Vision.
+// `image` is base64 — either a bare string or a data URL (data:image/...;base64,...).
+export async function importFromImage(
+  image: string,
+  mimeType?: string,
+): Promise<ImportedSpot> {
+  return invokeParseLink({ image, mimeType }, "Failed to import from screenshot");
 }

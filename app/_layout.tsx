@@ -16,7 +16,6 @@ import {
   PlayfairDisplay_500Medium_Italic,
 } from "@expo-google-fonts/playfair-display";
 import { useFonts } from "expo-font";
-import * as Linking from "expo-linking";
 import { Slot } from "expo-router";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -25,7 +24,6 @@ import "react-native-reanimated";
 import Toast from "react-native-toast-message";
 
 import { initAuth } from "@/utils/initAuth";
-import { supabase } from "@/utils/supabase";
 
 const queryClient = new QueryClient();
 
@@ -45,26 +43,6 @@ export default function RootLayout() {
 
   useEffect(() => {
     initAuth();
-  }, []);
-
-  useEffect(() => {
-    const handleDeepLink = async (url: string) => {
-      const { queryParams } = Linking.parse(url);
-      const code = queryParams?.code;
-      if (typeof code === "string") {
-        await supabase.auth.exchangeCodeForSession(code);
-      }
-    };
-
-    Linking.getInitialURL().then((url) => {
-      if (url) handleDeepLink(url);
-    });
-
-    const subscription = Linking.addEventListener("url", ({ url }) => {
-      handleDeepLink(url);
-    });
-
-    return () => subscription.remove();
   }, []);
 
   if (!loaded) {

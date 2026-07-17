@@ -20,7 +20,6 @@ type AuthStep = "default" | "email" | "sent";
 export default function AuthScreen() {
   const [step, setStep] = useState<AuthStep>("default");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -39,46 +38,9 @@ export default function AuthScreen() {
     }
   };
 
-  const handleSignInWithPassword = async () => {
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail || !password) return;
-    try {
-      setIsLoading(true);
-      await authApi.signInWithPassword(trimmedEmail, password);
-      router.replace("/(tabs)/cities");
-    } catch (error) {
-      console.error(error);
-      Alert.alert(
-        "Sign in failed",
-        "Invalid email or password. If you don't have an account yet, use Create Account.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCreateAccount = async () => {
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail || !password) return;
-    try {
-      setIsLoading(true);
-      await authApi.signUpWithPassword(trimmedEmail, password);
-      Alert.alert(
-        "Account created",
-        "Check your email to confirm your account, then sign in.",
-      );
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "Could not create account. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleReset = () => {
     setStep("default");
     setEmail("");
-    setPassword("");
   };
 
   const handleDevLogin = async () => {
@@ -144,19 +106,10 @@ export default function AuthScreen() {
             autoCapitalize="none"
             keyboardType="email-address"
             autoFocus
-            returnKeyType="next"
+            returnKeyType="done"
             value={email}
             onChangeText={setEmail}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Password (optional — for magic link leave blank)"
-            placeholderTextColor={Palette.subtleText}
-            secureTextEntry
-            returnKeyType="done"
-            value={password}
-            onChangeText={setPassword}
+            onSubmitEditing={handleSendMagicLink}
           />
 
           <TouchableOpacity
@@ -169,36 +122,6 @@ export default function AuthScreen() {
               {isLoading ? "Sending…" : "Send magic link"}
             </Text>
           </TouchableOpacity>
-
-          {password.length > 0 && (
-            <>
-              <TouchableOpacity
-                style={[
-                  styles.secondaryButton,
-                  isLoading && styles.buttonDisabled,
-                ]}
-                onPress={handleSignInWithPassword}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.secondaryButtonText}>
-                  Sign in with password
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.secondaryButton,
-                  isLoading && styles.buttonDisabled,
-                ]}
-                onPress={handleCreateAccount}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.secondaryButtonText}>Create account</Text>
-              </TouchableOpacity>
-            </>
-          )}
 
           <TouchableOpacity style={styles.backButton} onPress={handleReset}>
             <Text style={styles.backText}>← Back</Text>

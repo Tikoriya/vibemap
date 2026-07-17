@@ -268,6 +268,91 @@ ${pageText.slice(0, 2000)}`;
 }
 
 // ---------------------------------------------------------------------------
+// Gemini Vision: extract structured place info from a screenshot
+//
+// Instagram blocks server-side reads of a post from a datacenter IP, so the
+// caption/location never reach us via a URL fetch. A screenshot, however, is
+// fully readable: the account @handle, the location tag, the caption, and any
+// on-photo signage are all visible pixels. We hand the image to Gemini's
+// multimodal model and let it read those signals into a structured place.
+// ---------------------------------------------------------------------------
+type ImageInput = { data: string; mimeType: string };
+
+// Accepts either a bare base64 string or a data URL (data:image/png;base64,...).
+function parseImageInput(image: string, fallbackMime?: string): ImageInput {
+  const dataUrl = image.match(/^data:([^;]+);base64,(.*)$/s);
+  if (dataUrl) return { mimeType: dataUrl[1], data: dataUrl[2] };
+  return { mimeType: fallbackMime || "image/jpeg", data: image };
+}
+
+async function extractWithGeminiVision(
+  image: ImageInput,
+  geminiKey: string,
+): Promise<GeminiPlace> {
+  const prompt = `This image is a screenshot of an Instagram post, reel, or profile that refers to a real-world place (restaurant, bar, café, hotel, shop, museum, etc.).
+
+Read EVERYTHING visible in the image:
+- the account @handle (e.g. @cafenil)
+- the location tag shown at the top of a post (this is often the most reliable signal)
+- the caption text and hashtags
+- any signage, logo, or text visible inside the photo itself
+
+From all of that, identify the single real-world place the post is about.
+
+Return ONLY a JSON object (no markdown, no explanation):
+{
+  "name": "the place's real-world name (expand handles sensibly, e.g. @cafenil -> Café Nil)",
+  "city": "the city the place is in, if you can determine it",
+  "hints": "other identifying details that help locate it: neighbourhood, address fragment, the @handle, country"
+}
+
+If no real-world place can be identified, return:
+{"name":"","city":"","hints":""}`;
+
+  const res = await fetchGeminiWithRetry(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              { inlineData: { mimeType: image.mimeType, data: image.data } },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0,
+          maxOutputTokens: 512,
+          // gemini-2.5-flash enables "thinking" by default, which silently consumes
+          // the output-token budget and can return empty text. Disable it for this
+          // small extraction task, and force a pure-JSON response.
+          thinkingConfig: { thinkingBudget: 0 },
+          responseMimeType: "application/json",
+        },
+      }),
+    },
+  );
+
+  if (!res.ok) {
+    throw new Error(`Gemini Vision API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const raw: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    const finish = data?.candidates?.[0]?.finishReason ?? "unknown";
+    throw new Error(`Gemini Vision returned no JSON (finishReason: ${finish})`);
+  }
+
+  return JSON.parse(jsonMatch[0]) as GeminiPlace;
+}
+
+// ---------------------------------------------------------------------------
 // Google Places Text Search
 // ---------------------------------------------------------------------------
 type ResolvedPlace = {
@@ -351,6 +436,49 @@ async function resolvePhotoUrls(
 }
 
 // ---------------------------------------------------------------------------
+// Shared: resolve an extracted place against Google Places and build the
+// ImportedSpot response. Used by both the URL path and the screenshot path.
+// ---------------------------------------------------------------------------
+async function buildSpotResponse(
+  extracted: GeminiPlace,
+  placesKey: string,
+  sourceUrl: string | null,
+): Promise<Response> {
+  const searchQuery = [extracted.name, extracted.city, extracted.hints]
+    .filter(Boolean)
+    .join(", ");
+
+  let resolved: ResolvedPlace | null;
+  try {
+    resolved = await resolveWithPlaces(searchQuery, placesKey);
+  } catch (e) {
+    return errorResponse(`Could not resolve place: ${(e as Error).message}`, 500);
+  }
+
+  if (!resolved) {
+    return errorResponse(
+      `Found a place called "${extracted.name}" but could not locate it in Google Maps. Try a clearer screenshot or a more specific link.`,
+    );
+  }
+
+  const photos = resolved.photoNames?.length
+    ? await resolvePhotoUrls(resolved.photoNames, placesKey)
+    : [];
+
+  return jsonResponse({
+    name: resolved.name,
+    address: resolved.address,
+    latitude: resolved.latitude,
+    longitude: resolved.longitude,
+    websiteUri: resolved.websiteUri ?? null,
+    phoneNumber: resolved.phoneNumber ?? null,
+    notes: sourceUrl ? `Imported from: ${sourceUrl}` : "Imported from Instagram",
+    sourceUrl: sourceUrl ?? null,
+    photos,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
 Deno.serve(async (req: Request) => {
@@ -362,16 +490,12 @@ Deno.serve(async (req: Request) => {
     return errorResponse("Method not allowed", 405);
   }
 
-  let body: { url?: string };
+  let body: { url?: string; image?: string; mimeType?: string };
   try {
     body = await req.json();
   } catch {
     return errorResponse("Invalid JSON body");
   }
-
-  const rawUrl = body?.url?.trim() ?? "";
-  if (!rawUrl) return errorResponse("Missing url");
-  if (!isValidHttpUrl(rawUrl)) return errorResponse("Invalid URL — must be http or https");
 
   const geminiKey = Deno.env.get("GEMINI_API_KEY");
   const placesKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
@@ -379,6 +503,34 @@ Deno.serve(async (req: Request) => {
   if (!geminiKey || !placesKey) {
     return errorResponse("Server misconfiguration: missing API keys", 500);
   }
+
+  // --- Screenshot path: read the place straight out of the image with Gemini Vision ---
+  // This is the reliable Instagram route — Instagram blocks server-side reads of a post
+  // URL from our datacenter IP, but a screenshot the user already has is fully readable.
+  const rawImage = body?.image?.trim() ?? "";
+  if (rawImage) {
+    let extracted: GeminiPlace;
+    try {
+      extracted = await extractWithGeminiVision(
+        parseImageInput(rawImage, body?.mimeType),
+        geminiKey,
+      );
+    } catch (e) {
+      return errorResponse(`Could not read the screenshot: ${(e as Error).message}`, 500);
+    }
+
+    if (!extracted.name) {
+      return errorResponse(
+        "Couldn't find a place in this screenshot. Make sure the location tag, caption, or the place's name is visible.",
+      );
+    }
+
+    return buildSpotResponse(extracted, placesKey, null);
+  }
+
+  const rawUrl = body?.url?.trim() ?? "";
+  if (!rawUrl) return errorResponse("Missing url or image");
+  if (!isValidHttpUrl(rawUrl)) return errorResponse("Invalid URL — must be http or https");
 
   // --- Step 1: manually resolve short links to get the true destination URL ---
   // maps.app.goo.gl uses an app-detection interstitial that Deno's auto-redirect can't
@@ -442,37 +594,6 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // --- Step 4: Google Places Text Search ---
-  const searchQuery = [extracted.name, extracted.city, extracted.hints]
-    .filter(Boolean)
-    .join(", ");
-
-  let resolved: ResolvedPlace | null;
-  try {
-    resolved = await resolveWithPlaces(searchQuery, placesKey);
-  } catch (e) {
-    return errorResponse(`Could not resolve place: ${(e as Error).message}`, 500);
-  }
-
-  if (!resolved) {
-    return errorResponse(
-      `Found a place called "${extracted.name}" but could not locate it in Google Maps. Try a more specific link.`,
-    );
-  }
-
-  const photos = resolved.photoNames?.length
-    ? await resolvePhotoUrls(resolved.photoNames, placesKey)
-    : [];
-
-  return jsonResponse({
-    name: resolved.name,
-    address: resolved.address,
-    latitude: resolved.latitude,
-    longitude: resolved.longitude,
-    websiteUri: resolved.websiteUri ?? null,
-    phoneNumber: resolved.phoneNumber ?? null,
-    notes: `Imported from: ${resolvedUrl}`,
-    sourceUrl: resolvedUrl,
-    photos,
-  });
+  // --- Step 4: resolve against Google Places and build the response ---
+  return buildSpotResponse(extracted, placesKey, resolvedUrl);
 });

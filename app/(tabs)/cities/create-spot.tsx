@@ -1,6 +1,7 @@
 import { PlacesAutocompleteField } from "@/components/GoogleAutoComplete";
 import { ImportedPhotos } from "@/components/ImportedPhotos";
 import { ImportLinkField } from "@/components/ImportLinkField";
+import { ImportScreenshotButton } from "@/components/ImportScreenshotButton";
 import { TagPicker } from "@/components/TagPicker";
 import { CitySelectField } from "@/components/ui/CitySelectField";
 import { Input } from "@/components/ui/Input";
@@ -13,7 +14,8 @@ import { useCities } from "@/hooks/useCities";
 import { useCreateTag } from "@/hooks/useCreateTag";
 import { useSpot } from "@/hooks/useSpot";
 import { CreateSpotFormValues, createSpotSchema } from "@/lib/schemas/spot";
-import { uploadPhotoFromUrl } from "@/lib/services/photoUpload";
+import { ImportedSpot } from "@/lib/services/import";
+import { uploadPhotoFromUri, uploadPhotoFromUrl } from "@/lib/services/photoUpload";
 import { useAuthStore } from "@/lib/store";
 import { spotPhotosApi } from "@/lib/supabase/spot_photos";
 import { tagsSpotsApi } from "@/lib/supabase/tags_spots";
@@ -47,7 +49,7 @@ type SpotTab = "manual" | "import";
 
 const SPOT_TABS: { key: SpotTab; label: string }[] = [
   { key: "manual", label: "Add Spot" },
-  { key: "import", label: "Import from link" },
+  { key: "import", label: "Import" },
 ];
 
 export default function CreateSpotScreen() {
@@ -116,6 +118,16 @@ export default function CreateSpotScreen() {
     </View>
   );
 
+  const applyImported = (spot: ImportedSpot, photos: string[]) => {
+    setValue("name", spot.name, { shouldValidate: true });
+    setValue("address", spot.address, { shouldValidate: true });
+    setValue("latitude", spot.latitude);
+    setValue("longitude", spot.longitude);
+    setImportedName(spot.name);
+    setImportedAddress(spot.address);
+    setImportedPhotos(photos);
+  };
+
   const handleResetImport = () => {
     setImportedName(undefined);
     setImportedAddress(undefined);
@@ -152,7 +164,11 @@ export default function CreateSpotScreen() {
       if (importedPhotos.length > 0) {
         const results = await Promise.allSettled(
           importedPhotos.map((url, i) =>
-            uploadPhotoFromUrl(createdSpot.id, url, i),
+            // A screenshot fallback is a local file:// / ph:// / content:// URI;
+            // Places photos are remote https URLs. Each needs a different uploader.
+            /^https?:/.test(url)
+              ? uploadPhotoFromUrl(createdSpot.id, url, i)
+              : uploadPhotoFromUri(createdSpot.id, url, i),
           ),
         );
         const stored = results
@@ -265,7 +281,7 @@ export default function CreateSpotScreen() {
               </View>
             </>
           ) : (
-            /* Import from link */
+            /* Import — paste a link or pick a screenshot */
             <>
               {renderCityField()}
 
@@ -313,17 +329,32 @@ export default function CreateSpotScreen() {
                   />
                 </View>
               ) : (
-                <ImportLinkField
-                  onImported={(spot) => {
-                    setValue("name", spot.name, { shouldValidate: true });
-                    setValue("address", spot.address, { shouldValidate: true });
-                    setValue("latitude", spot.latitude);
-                    setValue("longitude", spot.longitude);
-                    setImportedName(spot.name);
-                    setImportedAddress(spot.address);
-                    setImportedPhotos(spot.photos ?? []);
-                  }}
-                />
+                <View style={styles.importMethods}>
+                  <ImportLinkField
+                    onImported={(spot) => applyImported(spot, spot.photos ?? [])}
+                  />
+
+                  <View style={styles.dividerRow}>
+                    <View
+                      style={[styles.dividerLine, { backgroundColor: theme.border }]}
+                    />
+                    <Text style={[styles.dividerText, { color: theme.textMuted }]}>
+                      or
+                    </Text>
+                    <View
+                      style={[styles.dividerLine, { backgroundColor: theme.border }]}
+                    />
+                  </View>
+
+                  <ImportScreenshotButton
+                    onImported={(spot, sourceUri) =>
+                      applyImported(
+                        spot,
+                        spot.photos?.length ? spot.photos : [sourceUri],
+                      )
+                    }
+                  />
+                </View>
               )}
               </View>
             </>
@@ -412,6 +443,21 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: 8,
+  },
+  importMethods: {
+    gap: Spacing.space4,
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.space2,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+  },
+  dividerText: {
+    ...Typography.secondary,
   },
   importedCard: {
     borderWidth: 1,

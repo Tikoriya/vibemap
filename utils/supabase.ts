@@ -8,8 +8,12 @@ export const supabase = createClient(supabaseUrl, publicKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
     persistSession: true,
+    // PKCE is the recommended flow for native: the magic link redirects back
+    // with a `?code=` we exchange in app/auth/callback.tsx.
+    flowType: "pkce",
+    // Web-only option — on native, deep links are handled by the callback route.
+    detectSessionInUrl: false,
   },
   global: {
     // Force React Native's native fetch — prevents cross-fetch from falling back
