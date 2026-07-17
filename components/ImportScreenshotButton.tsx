@@ -17,10 +17,18 @@ import {
 
 type Props = {
   onImported: (spot: ImportedSpot, sourceUri: string) => void;
+  /**
+   * Compact variant used when the button sits alongside another action
+   * (e.g. next to "Import from link"). Drops the helper hint and lets the
+   * button flex to share row width.
+   */
+  compact?: boolean;
+  /** Fired the moment the button is tapped, before the picker opens. */
+  onPress?: () => void;
 };
 
 export const ImportScreenshotButton = (props: Props) => {
-  const { onImported } = props;
+  const { onImported, compact = false, onPress } = props;
   const { importImage, isImporting, importError, resetImport } =
     useImportImage();
 
@@ -29,6 +37,7 @@ export const ImportScreenshotButton = (props: Props) => {
   const theme = isDark ? Colors.dark : Colors.light;
 
   const handlePress = async () => {
+    onPress?.();
     if (importError) resetImport();
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -52,7 +61,10 @@ export const ImportScreenshotButton = (props: Props) => {
 
     const asset = result.assets[0];
     if (!asset?.base64) {
-      Alert.alert("Error", "Could not read that image. Please try another one.");
+      Alert.alert(
+        "Error",
+        "Could not read that image. Please try another one.",
+      );
       return;
     }
 
@@ -68,12 +80,13 @@ export const ImportScreenshotButton = (props: Props) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, compact && styles.containerCompact]}>
       <TouchableOpacity
         style={[
           styles.button,
+          compact && styles.buttonCompact,
           {
-            borderColor: importError ? theme.error : theme.accent,
+            borderColor: importError ? theme.error : theme.border,
             backgroundColor: theme.surface,
           },
         ]}
@@ -82,12 +95,15 @@ export const ImportScreenshotButton = (props: Props) => {
         activeOpacity={0.85}
       >
         {isImporting ? (
-          <ActivityIndicator size="small" color={theme.accent} />
+          <ActivityIndicator size="small" color={theme.text} />
         ) : (
           <>
-            <ImageIcon size={18} color={theme.accent} />
-            <Text style={[styles.label, { color: theme.accent }]}>
-              Import from a screenshot
+            <ImageIcon size={26} color={theme.text} strokeWidth={1} />
+            <Text
+              style={[styles.label, { color: theme.text }]}
+              numberOfLines={1}
+            >
+              {compact ? "Import screenshot" : "Import from a screenshot"}
             </Text>
           </>
         )}
@@ -100,7 +116,7 @@ export const ImportScreenshotButton = (props: Props) => {
             {importError}
           </Text>
         </View>
-      ) : (
+      ) : compact ? null : (
         <Text style={[styles.hint, { color: theme.textMuted }]}>
           Screenshot an Instagram post, reel, or profile — we&apos;ll read the
           place from it.
@@ -114,14 +130,21 @@ const styles = StyleSheet.create({
   container: {
     gap: Spacing.space2,
   },
+  containerCompact: {
+    flex: 1,
+  },
   button: {
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     gap: Spacing.space2,
-    borderWidth: 1.5,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.md,
-    paddingVertical: Spacing.space3,
+    paddingVertical: Spacing.space4,
+    paddingHorizontal: Spacing.space3,
+  },
+  buttonCompact: {
+    paddingHorizontal: Spacing.space2,
   },
   label: {
     ...Typography.button,

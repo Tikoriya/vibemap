@@ -10,7 +10,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   useColorScheme,
   View,
 } from "react-native";
@@ -30,8 +29,8 @@ export const ImportLinkField = (props: Props) => {
   const isDark = colorScheme === "dark";
   const theme = isDark ? Colors.dark : Colors.light;
 
-  const handleImport = async () => {
-    const trimmed = url.trim();
+  const runImport = async (value: string) => {
+    const trimmed = value.trim();
     if (!trimmed) return;
     try {
       const result = await importLink(trimmed);
@@ -42,12 +41,24 @@ export const ImportLinkField = (props: Props) => {
     }
   };
 
+  const handleImport = () => runImport(url);
+
+  // Heuristic: a single onChangeText that adds many characters at once is a
+  // paste (users can't type 8+ chars in one event). Auto-import so users don't
+  // have to tap the Import button after pasting a link.
+  const looksLikeUrl = (value: string) => /^https?:\/\/\S+$/i.test(value.trim());
+
   const handleChangeText = (text: string) => {
+    const previous = url;
     setUrl(text);
     if (importError) resetImport();
+
+    const delta = text.length - previous.length;
+    if (delta >= 8 && looksLikeUrl(text) && !isImporting) {
+      runImport(text);
+    }
   };
 
-  const canImport = url.trim().length > 0 && !isImporting;
   const isActive = !!importError || isFocused;
   const borderColor = importError
     ? theme.error
@@ -89,25 +100,7 @@ export const ImportLinkField = (props: Props) => {
             color={theme.accent}
             style={styles.trailing}
           />
-        ) : (
-          <TouchableOpacity
-            onPress={handleImport}
-            disabled={!canImport}
-            activeOpacity={0.7}
-            style={styles.trailing}
-          >
-            <Text
-              style={[
-                styles.importButton,
-                { color: canImport ? theme.accent : theme.textMuted },
-              ]}
-            >
-              Import
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {importError ? (
+        ) : importError ? (
           <AlertCircle size={18} color={theme.error} style={styles.trailing} />
         ) : null}
       </View>
@@ -138,9 +131,6 @@ const styles = StyleSheet.create({
   },
   trailing: {
     marginLeft: Spacing.space2,
-  },
-  importButton: {
-    ...Typography.button,
   },
   error: {
     ...Typography.secondary,

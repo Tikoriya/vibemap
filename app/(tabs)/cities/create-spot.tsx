@@ -15,14 +15,17 @@ import { useCreateTag } from "@/hooks/useCreateTag";
 import { useSpot } from "@/hooks/useSpot";
 import { CreateSpotFormValues, createSpotSchema } from "@/lib/schemas/spot";
 import { ImportedSpot } from "@/lib/services/import";
-import { uploadPhotoFromUri, uploadPhotoFromUrl } from "@/lib/services/photoUpload";
+import {
+  uploadPhotoFromUri,
+  uploadPhotoFromUrl,
+} from "@/lib/services/photoUpload";
 import { useAuthStore } from "@/lib/store";
 import { spotPhotosApi } from "@/lib/supabase/spot_photos";
 import { tagsSpotsApi } from "@/lib/supabase/tags_spots";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { RotateCcw } from "lucide-react-native";
+import { Link2, RotateCcw } from "lucide-react-native";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -43,26 +46,32 @@ type CreateSpotRouteParams = {
   // Present when launched from inside a city; absent from the global + button.
   cityId?: string;
   cityName?: string;
+  // "1" when the caller wants the city locked (e.g. explicit "+ Add spot" from
+  // the city header). Absent for soft preselects (tab bar contextual guess),
+  // where the user should still be able to switch cities.
+  lockCity?: string;
 };
 
 type SpotTab = "manual" | "import";
 
 const SPOT_TABS: { key: SpotTab; label: string }[] = [
-  { key: "manual", label: "Add Spot" },
   { key: "import", label: "Import" },
+  { key: "manual", label: "Add Spot" },
 ];
 
 export default function CreateSpotScreen() {
   const router = useRouter();
-  const { cityId: cityIdParam } = useLocalSearchParams<CreateSpotRouteParams>();
+  const { cityId: cityIdParam, lockCity: lockCityParam } =
+    useLocalSearchParams<CreateSpotRouteParams>();
   const presetCityId = cityIdParam ? parseInt(cityIdParam) : undefined;
+  const cityLocked = presetCityId !== undefined && lockCityParam === "1";
 
   const { cities } = useCities();
   const { user } = useAuthStore();
   const { mutateAsync: createTags } = useCreateTag();
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<SpotTab>("manual");
+  const [activeTab, setActiveTab] = useState<SpotTab>("import");
   const [tagLabels, setTagLabels] = useState<string[]>([]);
   const [importedName, setImportedName] = useState<string | undefined>(
     undefined,
@@ -71,6 +80,7 @@ export default function CreateSpotScreen() {
     undefined,
   );
   const [importedPhotos, setImportedPhotos] = useState<string[]>([]);
+  const [showLinkInput, setShowLinkInput] = useState(false);
 
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
@@ -111,7 +121,7 @@ export default function CreateSpotScreen() {
             value={value ?? null}
             onChange={(id) => onChange(id)}
             error={errors.cityId?.message}
-            locked={presetCityId !== undefined}
+            locked={cityLocked}
           />
         )}
       />
@@ -126,6 +136,19 @@ export default function CreateSpotScreen() {
     setImportedName(spot.name);
     setImportedAddress(spot.address);
     setImportedPhotos(photos);
+
+    // Google's formattedAddress usually contains the local city name (e.g.
+    // "…, 1060 Wien, Austria"). If the user hasn't picked a city yet, try to
+    // match it against one of their cities by case-insensitive substring.
+    if (!selectedCityId && cities && spot.address) {
+      const normalizedAddress = spot.address.toLowerCase();
+      const match = cities.find((city) =>
+        normalizedAddress.includes(city.name.toLowerCase()),
+      );
+      if (match) {
+        setValue("cityId", match.id, { shouldValidate: true });
+      }
+    }
   };
 
   const handleResetImport = () => {
@@ -287,75 +310,105 @@ export default function CreateSpotScreen() {
 
               <View style={styles.field}>
                 {importedName ? (
-                <View
-                  style={[
-                    styles.importedCard,
-                    { backgroundColor: theme.surface, borderColor: theme.border },
-                  ]}
-                >
-                  <View style={styles.importedHeader}>
-                    <Text
-                      style={[styles.importedName, { color: theme.text }]}
-                      numberOfLines={2}
-                    >
-                      {importedName}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={handleResetImport}
-                      activeOpacity={0.7}
-                      hitSlop={8}
-                      style={styles.importedReset}
-                    >
-                      <RotateCcw size={18} color={theme.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                  {importedAddress ? (
-                    <Text
-                      style={[
-                        styles.importedAddress,
-                        { color: theme.textSecondary },
-                      ]}
-                    >
-                      {importedAddress}
-                    </Text>
-                  ) : null}
-                  <ImportedPhotos
-                    photos={importedPhotos}
-                    onRemove={(url) =>
-                      setImportedPhotos((prev) =>
-                        prev.filter((p) => p !== url),
-                      )
-                    }
-                  />
-                </View>
-              ) : (
-                <View style={styles.importMethods}>
-                  <ImportLinkField
-                    onImported={(spot) => applyImported(spot, spot.photos ?? [])}
-                  />
-
-                  <View style={styles.dividerRow}>
-                    <View
-                      style={[styles.dividerLine, { backgroundColor: theme.border }]}
-                    />
-                    <Text style={[styles.dividerText, { color: theme.textMuted }]}>
-                      or
-                    </Text>
-                    <View
-                      style={[styles.dividerLine, { backgroundColor: theme.border }]}
+                  <View
+                    style={[
+                      styles.importedCard,
+                      {
+                        backgroundColor: theme.surface,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                  >
+                    <View style={styles.importedHeader}>
+                      <Text
+                        style={[styles.importedName, { color: theme.text }]}
+                        numberOfLines={2}
+                      >
+                        {importedName}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={handleResetImport}
+                        activeOpacity={0.7}
+                        hitSlop={8}
+                        style={styles.importedReset}
+                      >
+                        <RotateCcw size={18} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                    {importedAddress ? (
+                      <Text
+                        style={[
+                          styles.importedAddress,
+                          { color: theme.textSecondary },
+                        ]}
+                      >
+                        {importedAddress}
+                      </Text>
+                    ) : null}
+                    <ImportedPhotos
+                      photos={importedPhotos}
+                      onRemove={(url) =>
+                        setImportedPhotos((prev) =>
+                          prev.filter((p) => p !== url),
+                        )
+                      }
                     />
                   </View>
+                ) : (
+                  <View style={styles.importMethods}>
+                    <View style={styles.importMethodsRow}>
+                      <ImportScreenshotButton
+                        compact
+                        onPress={() => setShowLinkInput(false)}
+                        onImported={(spot, sourceUri) =>
+                          applyImported(
+                            spot,
+                            spot.photos?.length ? spot.photos : [sourceUri],
+                          )
+                        }
+                      />
 
-                  <ImportScreenshotButton
-                    onImported={(spot, sourceUri) =>
-                      applyImported(
-                        spot,
-                        spot.photos?.length ? spot.photos : [sourceUri],
-                      )
-                    }
-                  />
-                </View>
-              )}
+                      <TouchableOpacity
+                        style={[
+                          styles.linkToggleButton,
+                          {
+                            borderColor: theme.border,
+                            backgroundColor: showLinkInput
+                              ? theme.accentSubtle
+                              : theme.surface,
+                          },
+                        ]}
+                        onPress={() => setShowLinkInput((prev) => !prev)}
+                        activeOpacity={0.85}
+                      >
+                        <Link2 size={26} color={theme.text} strokeWidth={1} />
+                        <Text
+                          style={[
+                            styles.linkToggleLabel,
+                            { color: theme.text },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          Import from link
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {showLinkInput ? (
+                      <ImportLinkField
+                        label=""
+                        onImported={(spot) =>
+                          applyImported(spot, spot.photos ?? [])
+                        }
+                      />
+                    ) : null}
+                    <Text style={[styles.hint, { color: theme.textMuted }]}>
+                      Screenshot an Instagram post, reel, or profile —
+                      we&apos;ll read the place from it. Or simply paste a link
+                      from Google Maps.
+                    </Text>
+                  </View>
+                )}
               </View>
             </>
           )}
@@ -382,7 +435,11 @@ export default function CreateSpotScreen() {
 
           {/* Tags */}
           <View style={styles.field}>
-            <TagPicker value={tagLabels} onChange={setTagLabels} theme={theme} />
+            <TagPicker
+              value={tagLabels}
+              onChange={setTagLabels}
+              theme={theme}
+            />
           </View>
 
           <TouchableOpacity
@@ -447,17 +504,27 @@ const styles = StyleSheet.create({
   importMethods: {
     gap: Spacing.space4,
   },
-  dividerRow: {
+  importMethodsRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "stretch",
     gap: Spacing.space2,
   },
-  dividerLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-  },
-  dividerText: {
+  hint: {
     ...Typography.secondary,
+  },
+  linkToggleButton: {
+    flex: 1,
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.space2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.space4,
+    paddingHorizontal: Spacing.space2,
+  },
+  linkToggleLabel: {
+    ...Typography.button,
   },
   importedCard: {
     borderWidth: 1,
@@ -482,6 +549,7 @@ const styles = StyleSheet.create({
     ...Typography.secondary,
   },
   saveButton: {
+    marginTop: Spacing.space4,
     borderRadius: 14,
     paddingVertical: 15,
     alignItems: "center",

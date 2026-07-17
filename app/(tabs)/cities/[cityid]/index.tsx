@@ -12,7 +12,7 @@ import { useSpots } from "@/hooks/useSpots";
 import { useUiPrefsStore } from "@/lib/store";
 import { Tag } from "@/types";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronDown, ChevronUp } from "lucide-react-native";
+import { ChevronDown, ChevronUp, MapPin } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -165,6 +165,17 @@ export default function CityScreen() {
     );
   }
 
+  const goToCreateSpot = () =>
+    router.push({
+      pathname: "/cities/create-spot",
+      params: { cityId: cityid, cityName, lockCity: "1" },
+    });
+
+  // Onboarding empty state: no spots yet AND no filters applied. Keeps the
+  // back button + title for navigation, but strips the top-right "+ Add spot"
+  // and the action row so the center CTA is the obvious primary action.
+  const isOnboarding = spots.length === 0 && selectedTagIds.length === 0;
+
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: theme.background }]}
@@ -177,18 +188,15 @@ export default function CityScreen() {
             ‹ Cities
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: theme.accent }]}
-          onPress={() =>
-            router.push({
-              pathname: "/cities/create-spot",
-              params: { cityId: cityid, cityName },
-            })
-          }
-          activeOpacity={0.8}
-        >
-          <Text style={styles.addButtonText}>+ Add spot</Text>
-        </TouchableOpacity>
+        {!isOnboarding ? (
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: theme.accent }]}
+            onPress={goToCreateSpot}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.addButtonText}>+ Add spot</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* City title + actions */}
@@ -199,31 +207,33 @@ export default function CityScreen() {
         >
           {cityName ?? "City"}
         </Text>
-        <View style={styles.actions}>
-          <IconButton
-            icon="map"
-            onPress={() => console.log("map pressed")}
-            accessibilityLabel="View on map"
-          />
-          <IconButton
-            icon="filter"
-            onPress={toggleFilters}
-            accessibilityLabel="Filter spots"
-            background={showFilters ? theme.accent : undefined}
-            color={showFilters ? Palette.paper100 : undefined}
-          />
-          <IconButton
-            icon="edit"
-            onPress={() => console.log("edit pressed")}
-            accessibilityLabel="Edit city"
-          />
-          <IconButton
-            icon="delete"
-            onPress={handleDeleteCity}
-            accessibilityLabel="Delete city"
-            color={theme.error}
-          />
-        </View>
+        {!isOnboarding ? (
+          <View style={styles.actions}>
+            <IconButton
+              icon="map"
+              onPress={() => console.log("map pressed")}
+              accessibilityLabel="View on map"
+            />
+            <IconButton
+              icon="filter"
+              onPress={toggleFilters}
+              accessibilityLabel="Filter spots"
+              background={showFilters ? theme.accent : undefined}
+              color={showFilters ? Palette.paper100 : undefined}
+            />
+            <IconButton
+              icon="edit"
+              onPress={() => console.log("edit pressed")}
+              accessibilityLabel="Edit city"
+            />
+            <IconButton
+              icon="delete"
+              onPress={handleDeleteCity}
+              accessibilityLabel="Delete city"
+              color={theme.error}
+            />
+          </View>
+        ) : null}
       </View>
 
       {/* Collapsed filter bar */}
@@ -254,58 +264,99 @@ export default function CityScreen() {
       ) : null}
 
       <View style={styles.listWrap}>
-        <FlatList
-          data={spots}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={[
-            styles.list,
-            { paddingBottom: 24 + tabBarPadding },
-          ]}
-          showsVerticalScrollIndicator={false}
-          onEndReached={handleEndReached}
-          onEndReachedThreshold={0.5}
-          ListHeaderComponent={
-            <View style={styles.spotsHeader}>
-              <View style={styles.spotsCountRow}>
-                <Text
-                  style={[styles.spotsCount, { color: theme.textSecondary }]}
-                >
-                  {spots.length} {spots.length === 1 ? "spot" : "spots"}
+        {isOnboarding ? (
+          <View
+            style={[styles.emptyContainer, { paddingBottom: tabBarPadding }]}
+          >
+            <View
+              style={[
+                styles.emptyIconWrapper,
+                { backgroundColor: theme.accentSubtle },
+              ]}
+            >
+              <MapPin size={36} color={theme.text} />
+            </View>
+            <Text
+              style={[
+                Typography.title,
+                styles.emptyTitle,
+                { color: theme.text },
+              ]}
+            >
+              Add your first spot
+            </Text>
+            <Text
+              style={[
+                Typography.body,
+                styles.emptyBody,
+                { color: theme.textSecondary },
+              ]}
+            >
+              Save cafés, restaurants and hidden gems you find in{" "}
+              {cityName ?? "this city"}.
+            </Text>
+            <TouchableOpacity
+              style={[styles.emptyButton, { backgroundColor: theme.accent }]}
+              onPress={goToCreateSpot}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.emptyButtonText}>Add a spot</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={spots}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={[
+              styles.list,
+              { paddingBottom: 24 + tabBarPadding },
+            ]}
+            showsVerticalScrollIndicator={false}
+            onEndReached={handleEndReached}
+            onEndReachedThreshold={0.5}
+            ListHeaderComponent={
+              <View style={styles.spotsHeader}>
+                <View style={styles.spotsCountRow}>
+                  <Text
+                    style={[styles.spotsCount, { color: theme.textSecondary }]}
+                  >
+                    {spots.length} {spots.length === 1 ? "spot" : "spots"}
+                  </Text>
+                  {isRefetching ? (
+                    <ActivityIndicator size="small" color={theme.accent} />
+                  ) : null}
+                </View>
+              </View>
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Text style={[Typography.body, { color: theme.textSecondary }]}>
+                  No spots match these filters.
                 </Text>
-                {isRefetching ? (
-                  <ActivityIndicator size="small" color={theme.accent} />
-                ) : null}
               </View>
-            </View>
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={[Typography.body, { color: theme.textSecondary }]}>
-                No spots yet. Add your first one.
-              </Text>
-            </View>
-          }
-          renderItem={({ item }) => (
-            <SpotCard
-              spot={item}
-              onPress={() =>
-                router.push({
-                  pathname: "/cities/[cityid]/[spotid]",
-                  params: { cityid, spotid: item.id.toString() },
-                })
-              }
-              onDelete={() => deleteSpot(item.id)}
-            />
-          )}
-          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-          ListFooterComponent={
-            isFetchingNextPage ? (
-              <View style={styles.footerLoader}>
-                <ActivityIndicator color={theme.accent} />
-              </View>
-            ) : null
-          }
-        />
+            }
+            renderItem={({ item }) => (
+              <SpotCard
+                spot={item}
+                onPress={() =>
+                  router.push({
+                    pathname: "/cities/[cityid]/[spotid]",
+                    params: { cityid, spotid: item.id.toString() },
+                  })
+                }
+                onDelete={() => deleteSpot(item.id)}
+              />
+            )}
+            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+            ListFooterComponent={
+              isFetchingNextPage ? (
+                <View style={styles.footerLoader}>
+                  <ActivityIndicator color={theme.accent} />
+                </View>
+              ) : null
+            }
+          />
+        )}
       </View>
 
       {/* Expanded filter overlay */}
@@ -482,5 +533,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 32,
     alignItems: "center",
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  emptyIconWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    textAlign: "center",
+  },
+  emptyBody: {
+    textAlign: "center",
+    maxWidth: 280,
+  },
+  emptyButton: {
+    marginTop: 8,
+    paddingHorizontal: 26,
+    paddingVertical: 15,
+    borderRadius: 14,
+  },
+  emptyButtonText: {
+    color: Palette.paper100,
+    fontFamily: FontFamily.semiBold,
+    fontSize: 15,
   },
 });

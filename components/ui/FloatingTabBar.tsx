@@ -42,17 +42,48 @@ const PROFILE_SLOT: TabSlot = { base: "profile", label: "Profile", icon: User };
 
 type NestedRoute = {
   name?: string;
+  params?: Record<string, unknown>;
   state?: { routes: NestedRoute[]; index: number };
 };
 
-function getDeepestFocusedRouteName(route: NestedRoute): string {
+function getDeepestFocusedRoute(route: NestedRoute): NestedRoute {
   let current: NestedRoute = route;
   while (current.state?.routes && current.state.index != null) {
     const next = current.state.routes[current.state.index];
     if (!next) break;
     current = next;
   }
-  return getFocusedRouteNameFromRoute(current) ?? current.name ?? "index";
+  return current;
+}
+
+function getDeepestFocusedRouteName(route: NestedRoute): string {
+  const deepest = getDeepestFocusedRoute(route);
+  return getFocusedRouteNameFromRoute(deepest) ?? deepest.name ?? "index";
+}
+
+// Walks the tab -> stack tree looking for a route whose params carry a `cityid`
+// (i.e. any screen nested under /cities/[cityid]/...). Returns undefined if the
+// user isn't currently viewing a city.
+function findFocusedCity(
+  route: NestedRoute,
+): { cityId: string; cityName?: string } | undefined {
+  let current: NestedRoute | undefined = route;
+  while (current) {
+    const cityid = current.params?.cityid;
+    if (typeof cityid === "string" && cityid.length > 0) {
+      const cityName = current.params?.cityName;
+      return {
+        cityId: cityid,
+        cityName: typeof cityName === "string" ? cityName : undefined,
+      };
+    }
+    if (current.state?.routes && current.state.index != null) {
+      current = current.state.routes[current.state.index];
+    } else {
+      current = undefined;
+    }
+  }
+  return undefined;
 }
 
 export const FloatingTabBar = (props: BottomTabBarProps) => {
@@ -105,6 +136,20 @@ export const FloatingTabBar = (props: BottomTabBarProps) => {
   const handleAddSpot = () => {
     if (process.env.EXPO_OS === "ios") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    // If the user is currently browsing a city (or one of its spots), soft-
+    // preselect that city in the create form. The tab bar is a contextual
+    // shortcut, so the field stays editable (no `lockCity`).
+    const focusedCity = findFocusedCity(state.routes[state.index]);
+    if (focusedCity) {
+      router.push({
+        pathname: "/cities/create-spot",
+        params: {
+          cityId: focusedCity.cityId,
+          ...(focusedCity.cityName ? { cityName: focusedCity.cityName } : {}),
+        },
+      });
+      return;
     }
     router.push("/cities/create-spot");
   };

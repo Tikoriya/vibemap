@@ -41,6 +41,7 @@ export const Input = forwardRef<TextInput, InputProps>((props, ref) => {
     containerStyle,
     style,
     multiline,
+    numberOfLines,
     tone = "default",
     variant = "default",
     onFocus,
@@ -49,6 +50,11 @@ export const Input = forwardRef<TextInput, InputProps>((props, ref) => {
   } = props;
 
   const isTitle = variant === "title";
+  // Cap the visible height of multiline inputs to `numberOfLines` — the field
+  // starts at one line and grows with content until it hits this ceiling, then
+  // scrolls internally. Matches Typography.body's 22px lineHeight.
+  const multilineMaxHeight =
+    multiline && numberOfLines ? numberOfLines * 22 : undefined;
 
   const [isFocused, setIsFocused] = useState(false);
 
@@ -104,6 +110,7 @@ export const Input = forwardRef<TextInput, InputProps>((props, ref) => {
           style={[
             styles.input,
             isTitle && styles.inputTitle,
+            multilineMaxHeight ? { maxHeight: multilineMaxHeight } : null,
             { color: textColor },
             style,
           ]}
@@ -147,7 +154,6 @@ const styles = StyleSheet.create({
   },
   rowMultiline: {
     alignItems: "flex-start",
-    minHeight: 96,
   },
   input: {
     ...Typography.body,

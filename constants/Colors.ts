@@ -13,36 +13,36 @@
 
 export const Palette = {
   // Forest · structure & text
-  ink900: '#14201A',
-  forest800: '#1C2A23',
-  forest700: '#2B3D34',
-  forest600: '#3A4F44',
-  sage400: '#6F8378',
+  ink900: "#14201A",
+  forest800: "#1C2A23",
+  forest700: "#2B3D34",
+  forest600: "#3A4F44",
+  sage400: "#6F8378",
 
   // Paper · surfaces
-  paper0: '#FBFAF5',
-  paper100: '#F4F1E8',
-  paper200: '#EAE5D8',
-  paper300: '#DED7C6',
-  paper400: '#C9C2AE',
+  paper0: "#FBFAF5",
+  paper100: "#F4F1E8",
+  paper200: "#EAE5D8",
+  paper300: "#DED7C6",
+  paper400: "#C9C2AE",
 
   // Neutral hairline / muted ink used across the design
-  cardBorder: '#E4DECF',
-  muted: '#9AA096',
-  subtleText: '#6F7D74',
+  cardBorder: "#E4DECF",
+  muted: "#9AA096",
+  subtleText: "#6F7D74",
 
   // Accent · ochre
-  ochre500: '#C9912F',
-  ochre50: '#F7ECD6',
+  ochre500: "#C9912F",
+  ochre50: "#F7ECD6",
 
   // Plum · map pins & live selection
-  plum: '#6C3FD4',
+  plum: "#6C3FD4",
 
   // Semantic
-  open: '#3F8A5F',
-  caution: '#D9772E',
-  closed: '#C0492F',
-  info: '#3A6FB0',
+  open: "#3F8A5F",
+  caution: "#D9772E",
+  closed: "#C0492F",
+  info: "#3A6FB0",
 } as const;
 
 export type ThemeColors = {
@@ -93,9 +93,9 @@ export const Colors: { light: ThemeColors; dark: ThemeColors } = {
     tabIconSelected: Palette.forest800,
     onAccent: Palette.paper100,
     // paper0 #FBFAF5 over a light blur
-    glass: 'rgba(251, 250, 245, 0.62)',
+    glass: "rgba(251, 250, 245, 0.62)",
     // forest800 #1C2A23 rim
-    glassBorder: 'rgba(28, 42, 35, 0.10)',
+    glassBorder: "rgba(28, 42, 35, 0.10)",
     success: Palette.open,
     warning: Palette.caution,
     error: Palette.closed,
@@ -112,17 +112,17 @@ export const Colors: { light: ThemeColors; dark: ThemeColors } = {
     accent: Palette.forest600,
     accentSubtle: Palette.forest700,
     ochre: Palette.ochre500,
-    ochreSubtle: '#3A2E14',
-    plum: '#9B79E6',
+    ochreSubtle: "#3A2E14",
+    plum: "#9B79E6",
     tint: Palette.ochre500,
     icon: Palette.muted,
     tabIconDefault: Palette.sage400,
     tabIconSelected: Palette.paper100,
     onAccent: Palette.paper100,
     // forest800 #1C2A23 over a dark blur
-    glass: 'rgba(28, 42, 35, 0.55)',
+    glass: "rgba(28, 42, 35, 0.55)",
     // paper100 #F4F1E8 rim catches light against ink900
-    glassBorder: 'rgba(244, 241, 232, 0.14)',
+    glassBorder: "rgba(244, 241, 232, 0.14)",
     success: Palette.open,
     warning: Palette.caution,
     error: Palette.closed,
