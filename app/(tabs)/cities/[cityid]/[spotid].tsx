@@ -2,7 +2,7 @@ import { EditablePhoto, SpotPhotoEditor } from "@/components/SpotPhotoEditor";
 import { SpotPhotoGallery } from "@/components/SpotPhotoGallery";
 import { TagPicker } from "@/components/TagPicker";
 import { IconButton } from "@/components/ui/IconButton";
-import { resolveTagIcon } from "@/components/ui/IconLabel";
+import { resolveTagIcon, TagGlyph } from "@/components/ui/IconLabel";
 import { Input } from "@/components/ui/Input";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import { Colors, Palette } from "@/constants/Colors";
@@ -512,20 +512,22 @@ export default function SpotDetailScreen() {
 
           {tags.length > 0 ? (
             <View style={styles.tagsRow}>
-              {tags.map((tag) => {
-                const Icon = resolveTagIcon(tag);
-                return (
-                  <View
-                    key={tag.id}
-                    style={[styles.tagPill, { backgroundColor: theme.ochreSubtle }]}
-                  >
-                    <Icon size={14} color={theme.ochre} strokeWidth={2} />
-                    <Text style={[styles.tagPillText, { color: theme.ochre }]}>
-                      {tag.label}
-                    </Text>
-                  </View>
-                );
-              })}
+              {tags.map((tag) => (
+                <View
+                  key={tag.id}
+                  style={[styles.tagPill, { backgroundColor: theme.ochreSubtle }]}
+                >
+                  <TagGlyph
+                    resolved={resolveTagIcon(tag)}
+                    size={14}
+                    color={theme.ochre}
+                    strokeWidth={2}
+                  />
+                  <Text style={[styles.tagPillText, { color: theme.ochre }]}>
+                    {tag.label}
+                  </Text>
+                </View>
+              ))}
             </View>
           ) : null}
 

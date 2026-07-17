@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, X } from "lucide-react-native";
+import { Check, Shapes, X } from "lucide-react-native";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
@@ -20,6 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { IconLabel } from "@/components/ui/IconLabel";
 import { Colors, Palette } from "@/constants/Colors";
+import { EMOJI_NAMES } from "@/constants/LabelEmojis";
 import {
   DEFAULT_LABEL_ICON,
   getLabelIcon,
@@ -78,6 +80,13 @@ export default function CreateLabelScreen() {
   const selectedIcon = watch("icon");
   const name = watch("name");
   const canSave = name.trim().length > 0 && !isPending;
+
+  // Which grid is showing — independent of the selected icon/emoji, so
+  // browsing the other tab never clears what's already picked.
+  const [activeTab, setActiveTab] = useState<"icon" | "emoji">(
+    () => getLabelIcon(params.icon).type,
+  );
+  const gridNames = activeTab === "icon" ? LABEL_ICON_NAMES : EMOJI_NAMES;
 
   const onSubmit = async (values: LabelFormValues) => {
     const label = values.name.trim();
@@ -167,7 +176,7 @@ export default function CreateLabelScreen() {
             style={[styles.identityCard, { backgroundColor: theme.surface }]}
           >
             <IconLabel
-              icon={getLabelIcon(selectedIcon)}
+              {...getLabelIcon(selectedIcon)}
               size={66}
               strokeWidth={1.6}
               color={Palette.paper0}
@@ -200,23 +209,64 @@ export default function CreateLabelScreen() {
             </Text>
           ) : null}
 
-          {/* Icon picker — one flat grid */}
-          <View style={[styles.grid, styles.gridSpacing]}>
-            {LABEL_ICON_NAMES.map((iconName) => {
-              const isSelected = iconName === selectedIcon;
+          {/* Tab switcher — icons vs emoji */}
+          <View style={[styles.tabRow, styles.gridSpacing]}>
+            <TouchableOpacity
+              style={[
+                styles.tabButton,
+                {
+                  backgroundColor:
+                    activeTab === "icon" ? theme.ochre : theme.surfaceElevated,
+                },
+              ]}
+              onPress={() => setActiveTab("icon")}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activeTab === "icon" }}
+              accessibilityLabel="Icons"
+            >
+              <Shapes
+                size={18}
+                color={activeTab === "icon" ? theme.ochreSubtle : theme.text}
+                strokeWidth={1.8}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.tabButton,
+                {
+                  backgroundColor:
+                    activeTab === "emoji" ? theme.ochre : theme.surfaceElevated,
+                },
+              ]}
+              onPress={() => setActiveTab("emoji")}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activeTab === "emoji" }}
+              accessibilityLabel="Emoji"
+            >
+              <Text style={styles.tabEmoji}>😀</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Icon/emoji picker — one flat grid per tab */}
+          <View style={styles.grid}>
+            {gridNames.map((itemName) => {
+              const isSelected = itemName === selectedIcon;
               return (
                 <TouchableOpacity
-                  key={iconName}
+                  key={itemName}
                   onPress={() =>
-                    setValue("icon", iconName, { shouldValidate: true })
+                    setValue("icon", itemName, { shouldValidate: true })
                   }
                   activeOpacity={0.8}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={iconName}
+                  accessibilityLabel={itemName}
                 >
                   <IconLabel
-                    icon={getLabelIcon(iconName)}
+                    {...getLabelIcon(itemName)}
                     size={CIRCLE_SIZE}
                     strokeWidth={1.6}
                     color={isSelected ? theme.ochreSubtle : theme.text}
@@ -280,10 +330,26 @@ const styles = StyleSheet.create({
     marginTop: Spacing.space2,
     marginLeft: Spacing.space1,
   },
+  tabRow: {
+    flexDirection: "row",
+    gap: Spacing.space2,
+    justifyContent: "flex-end",
+  },
+  tabButton: {
+    width: 44,
+    height: 36,
+    borderRadius: Radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabEmoji: {
+    fontSize: 18,
+  },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: GAP,
+    marginTop: Spacing.space4,
   },
   gridSpacing: {
     marginTop: Spacing.space6,

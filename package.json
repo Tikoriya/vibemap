@@ -12,7 +12,8 @@
     "prebuild:ios": "npx expo prebuild --platform ios",
     "prebuild:android": "npx expo prebuild --platform android",
     "build:ios": "eas build --platform ios --profile preview",
-    "build:android": "eas build --platform android --profile preview"
+    "build:android": "eas build --platform android --profile preview",
+    "device:release:ios": "expo run:ios --configuration Release --device"
   },
   "dependencies": {
     "@expo-google-fonts/dm-mono": "^0.4.2",

@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { Check, LucideIcon, Pencil, Plus, X } from "lucide-react-native";
+import { Check, Pencil, Plus, X } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -13,9 +13,13 @@ import {
   View,
 } from "react-native";
 
-import { ICON_LABELS, IconLabel } from "@/components/ui/IconLabel";
+import {
+  ICON_LABELS,
+  IconLabel,
+  IconLabelPreset,
+} from "@/components/ui/IconLabel";
 import { Colors, Palette } from "@/constants/Colors";
-import { getLabelIcon } from "@/constants/LabelIcons";
+import { getLabelIcon, ResolvedLabelIcon } from "@/constants/LabelIcons";
 import { Radius, Spacing } from "@/constants/Theme";
 import { FontFamily } from "@/constants/Typography";
 import { useDeleteTag } from "@/hooks/useDeleteTag";
@@ -25,7 +29,7 @@ import { useLabelDraftStore } from "@/lib/store";
 type PickerTag = {
   id?: number;
   label: string;
-  icon: LucideIcon;
+  resolved: ResolvedLabelIcon;
   iconName?: string | null;
 };
 
@@ -50,12 +54,9 @@ const PAGE_SIZE = COLUMNS * 4;
 const TAGS_PER_PAGE = PAGE_SIZE - 1;
 
 // Only the categories that have a dedicated icon are offered as predefined picks.
-const PREDEFINED_ICON_TAGS: PickerTag[] = (
+const PREDEFINED_ICON_TAGS: IconLabelPreset[] = (
   Object.keys(ICON_LABELS) as (keyof typeof ICON_LABELS)[]
-).map((key) => ({
-  label: ICON_LABELS[key].label,
-  icon: ICON_LABELS[key].icon,
-}));
+).map((key) => ICON_LABELS[key]);
 
 export const TagPicker = (props: Props) => {
   const { value, onChange, theme, title = "Tags" } = props;
@@ -103,7 +104,9 @@ export const TagPicker = (props: Props) => {
     return {
       id: db?.id,
       label: t.label,
-      icon: db?.icon ? getLabelIcon(db.icon) : t.icon,
+      resolved: db?.icon
+        ? getLabelIcon(db.icon)
+        : { type: "icon", icon: t.icon },
       iconName: db?.icon ?? null,
     };
   });
@@ -114,7 +117,7 @@ export const TagPicker = (props: Props) => {
     .map((t) => ({
       id: t.id,
       label: t.label,
-      icon: getLabelIcon(t.icon),
+      resolved: getLabelIcon(t.icon),
       iconName: t.icon,
     }));
 
@@ -256,7 +259,7 @@ export const TagPicker = (props: Props) => {
                 >
                   <View style={styles.iconWrap}>
                     <IconLabel
-                      icon={tag.icon}
+                      {...tag.resolved}
                       size={CIRCLE_SIZE}
                       color={isSelected ? Palette.paper0 : theme.ochre}
                       background={isSelected ? theme.ochre : theme.ochreSubtle}

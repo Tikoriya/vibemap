@@ -13,13 +13,14 @@ import {
 import {
   StyleProp,
   StyleSheet,
+  Text,
   useColorScheme,
   View,
   ViewStyle,
 } from "react-native";
 
 import { Colors } from "@/constants/Colors";
-import { getLabelIcon } from "@/constants/LabelIcons";
+import { getLabelIcon, ResolvedLabelIcon } from "@/constants/LabelIcons";
 import { Radius } from "@/constants/Theme";
 
 export type IconLabelPreset = {
@@ -53,28 +54,32 @@ export type IconLabelKey = keyof typeof ICON_LABELS;
 export const resolveTagIcon = (tag: {
   label: string;
   icon?: string | null;
-}): LucideIcon => {
+}): ResolvedLabelIcon => {
   if (tag.icon) return getLabelIcon(tag.icon);
   const key = tag.label.trim().toLowerCase();
   return key in ICON_LABELS
-    ? ICON_LABELS[key as IconLabelKey].icon
+    ? { type: "icon", icon: ICON_LABELS[key as IconLabelKey].icon }
     : getLabelIcon(null);
 };
 
 type IconLabelProps = {
-  /** A key from the precreated `ICON_LABELS` registry. */
+  /** A key from the precreated `ICON_LABELS` registry (always icon type). */
   preset?: IconLabelKey;
-  /** A raw Lucide icon — used when no `preset` is given. */
+  /** Which shape to render. Defaults to "icon". */
+  type?: "icon" | "emoji";
+  /** A raw Lucide icon — used when `type` is "icon" and no `preset` is given. */
   icon?: LucideIcon;
+  /** A raw emoji character — used when `type` is "emoji". */
+  emoji?: string;
   /** Accessibility label; falls back to the preset's label. */
   label?: string;
   /** Diameter of the soft circle. */
   size?: number;
-  /** Icon stroke color. Defaults to the ochre accent. */
+  /** Icon stroke color. Defaults to the ochre accent. Ignored for emoji, which render in their native color. */
   color?: string;
   /** Circle fill color. Defaults to the soft ochre surface. */
   background?: string;
-  /** Icon stroke width. Defaults to 2. */
+  /** Icon stroke width. Defaults to 2. Ignored for emoji. */
   strokeWidth?: number;
   style?: StyleProp<ViewStyle>;
 };
@@ -82,7 +87,9 @@ type IconLabelProps = {
 export const IconLabel = (props: IconLabelProps) => {
   const {
     preset,
+    type = "icon",
     icon,
+    emoji,
     label,
     size = 28,
     color,
@@ -95,9 +102,32 @@ export const IconLabel = (props: IconLabelProps) => {
   const theme = colorScheme === "dark" ? Colors.dark : Colors.light;
 
   const resolved = preset ? ICON_LABELS[preset] : undefined;
-  const Icon = icon ?? resolved?.icon;
   const accessibilityLabel = label ?? resolved?.label;
 
+  const circleStyle = [
+    styles.circle,
+    {
+      width: size,
+      height: size,
+      backgroundColor: background ?? theme.ochreSubtle,
+    },
+    style,
+  ];
+
+  if (type === "emoji") {
+    if (!emoji) return null;
+    return (
+      <View
+        accessibilityRole="image"
+        accessibilityLabel={accessibilityLabel}
+        style={circleStyle}
+      >
+        <Text style={{ fontSize: Math.round(size * 0.55) }}>{emoji}</Text>
+      </View>
+    );
+  }
+
+  const Icon = icon ?? resolved?.icon;
   if (!Icon) {
     return null;
   }
@@ -106,15 +136,7 @@ export const IconLabel = (props: IconLabelProps) => {
     <View
       accessibilityRole="image"
       accessibilityLabel={accessibilityLabel}
-      style={[
-        styles.circle,
-        {
-          width: size,
-          height: size,
-          backgroundColor: background ?? theme.ochreSubtle,
-        },
-        style,
-      ]}
+      style={circleStyle}
     >
       <Icon
         size={Math.round(size * 0.55)}
@@ -123,6 +145,30 @@ export const IconLabel = (props: IconLabelProps) => {
       />
     </View>
   );
+};
+
+type TagGlyphProps = {
+  /** A `resolveTagIcon`/`getLabelIcon` result — icon or emoji. */
+  resolved: ResolvedLabelIcon;
+  size?: number;
+  /** Icon stroke color. Ignored for emoji, which render in their native color. */
+  color?: string;
+  strokeWidth?: number;
+};
+
+/**
+ * Bare icon/emoji glyph with no circle backdrop — for spots where a tag is
+ * rendered inline (e.g. a pill chip) rather than inside `IconLabel`'s circle.
+ */
+export const TagGlyph = (props: TagGlyphProps) => {
+  const { resolved, size = 14, color, strokeWidth = 2 } = props;
+
+  if (resolved.type === "emoji") {
+    return <Text style={{ fontSize: size }}>{resolved.emoji}</Text>;
+  }
+
+  const Icon = resolved.icon;
+  return <Icon size={size} color={color} strokeWidth={strokeWidth} />;
 };
 
 const styles = StyleSheet.create({

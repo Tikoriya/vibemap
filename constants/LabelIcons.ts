@@ -304,6 +304,8 @@ import {
   yinYang,
 } from "@lucide/lab";
 
+import { EMOJI_NAMES } from "@/constants/LabelEmojis";
+
 /**
  * Curated Lucide Lab icons (the experimental companion set). Each node is wrapped
  * into a `LucideIcon` so it renders identically to a core icon. Keys are prefixed
@@ -446,6 +448,14 @@ export type LabelIconCategory = {
   title: string;
   icons: string[];
 };
+
+/**
+ * A stored `tags.icon` value resolves to either a Lucide icon component or a
+ * raw emoji character. `IconLabel` renders either shape from this union.
+ */
+export type ResolvedLabelIcon =
+  | { type: "icon"; icon: LucideIcon }
+  | { type: "emoji"; emoji: string };
 
 /** Flat lookup from persisted icon name → Lucide component. */
 export const LABEL_ICONS: Record<string, LucideIcon> = {
@@ -1017,7 +1027,20 @@ export const LABEL_ICON_NAMES: string[] = [
   .filter((c): c is LabelIconCategory => c !== undefined)
   .flatMap((c) => c.icons);
 
-export const getLabelIcon = (name?: string | null): LucideIcon =>
-  (name ? LABEL_ICONS[name] : undefined) ??
-  LABEL_ICONS[DEFAULT_LABEL_ICON] ??
-  Tag;
+/**
+ * Resolves a stored `tags.icon` value back to a renderable icon or emoji.
+ * Emoji are told apart from Lucide names by membership in `EMOJI_NAMES`,
+ * since Lucide names are always PascalCase identifiers.
+ */
+export const getLabelIcon = (name?: string | null): ResolvedLabelIcon => {
+  if (name && EMOJI_NAMES.includes(name)) {
+    return { type: "emoji", emoji: name };
+  }
+  return {
+    type: "icon",
+    icon:
+      (name ? LABEL_ICONS[name] : undefined) ??
+      LABEL_ICONS[DEFAULT_LABEL_ICON] ??
+      Tag,
+  };
+};

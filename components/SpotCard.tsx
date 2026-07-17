@@ -74,7 +74,7 @@ export const SpotCard = (props: SpotCardProps) => {
             {tags.map((tag) => (
               <IconLabel
                 key={tag.id}
-                icon={resolveTagIcon(tag)}
+                {...resolveTagIcon(tag)}
                 label={tag.label}
               />
             ))}

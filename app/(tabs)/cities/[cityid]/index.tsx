@@ -1,6 +1,6 @@
 import { SpotCard } from "@/components/SpotCard";
 import { IconButton } from "@/components/ui/IconButton";
-import { resolveTagIcon } from "@/components/ui/IconLabel";
+import { resolveTagIcon, TagGlyph } from "@/components/ui/IconLabel";
 import { useBottomTabOverflow } from "@/components/ui/TabBarBackground";
 import { Colors, Palette } from "@/constants/Colors";
 import { Elevation, Radius, Spacing } from "@/constants/Theme";
@@ -98,7 +98,6 @@ export default function CityScreen() {
 
   const renderTagPill = (tag: Tag) => {
     const active = selectedTagIds.includes(tag.id);
-    const Icon = resolveTagIcon(tag);
     return (
       <TouchableOpacity
         key={tag.id}
@@ -109,7 +108,8 @@ export default function CityScreen() {
         onPress={() => toggleTag(tag.id)}
         activeOpacity={0.7}
       >
-        <Icon
+        <TagGlyph
+          resolved={resolveTagIcon(tag)}
           size={14}
           color={active ? Palette.paper100 : theme.ochre}
           strokeWidth={2}
