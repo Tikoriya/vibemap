@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tukka",
     "slug": "tukka",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tukka",
@@ -44,6 +44,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "faca7f46-e16a-423f-b17c-bd6bbadb7da1"
+      }
+    },
+    "owner": "tikoriya"
   }
 }

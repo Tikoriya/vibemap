@@ -73,19 +73,19 @@ export default function AuthScreen() {
 
       {step === "default" && (
         <View style={styles.authSection}>
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.googleButton}
             disabled={isLoading}
             activeOpacity={0.8}
           >
             <Text style={styles.googleButtonText}>Continue with Google</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
-          <View style={styles.dividerRow}>
+          {/* <View style={styles.dividerRow}>
             <View style={styles.divider} />
             <Text style={styles.dividerText}>or</Text>
             <View style={styles.divider} />
-          </View>
+          </View> */}
 
           <TouchableOpacity
             style={styles.emailButton}
