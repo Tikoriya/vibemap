@@ -1,14 +1,20 @@
 import axios from "axios";
 
-const API_KEY = 'AIzaSyDVg1KdYVy-BatJedvC3JXN5z8X1mRjcEw';
+import { googlePlacesApiKey } from "@/lib/env";
 
 const placesClient = axios.create({
     baseURL: 'https://places.googleapis.com/v1/places',
     headers: {
         'Content-Type': 'application/json',
-        'X-Goog-Api-Key': API_KEY,
+        'X-Goog-Api-Key': googlePlacesApiKey ?? '',
     },
 });
+
+const ensureConfigured = () => {
+    if (!googlePlacesApiKey) {
+        throw new Error('Place search is not configured.');
+    }
+};
 
 export type PlaceDetail = {
     name: string;
@@ -19,6 +25,7 @@ export type PlaceDetail = {
 
 const googleApi = {
     getAutocomplete: async (query: string) => {
+        ensureConfigured();
         const response = await placesClient.post(':autocomplete', { input: query });
         if (response.status !== 200) {
             throw new Error('Failed to get autocomplete suggestions');
@@ -27,6 +34,7 @@ const googleApi = {
     },
 
     getPlaceDetails: async (placeId: string): Promise<PlaceDetail> => {
+        ensureConfigured();
         const response = await placesClient.get(`/${placeId}`, {
             headers: {
                 'X-Goog-FieldMask': 'displayName,formattedAddress,location',

@@ -1,6 +1,4 @@
-// Register at https://unsplash.com/developers to get a free Access Key.
-// This will be moved to an EAS Secret environment variable in Phase 1h.
-const UNSPLASH_ACCESS_KEY = "rZdiOASNYWjuwUMqOgmpZ9RzWyFUOViV7HP11m-3d30";
+import { unsplashAccessKey } from "@/lib/env";
 
 export type UnsplashPhoto = {
   id: string;
@@ -21,12 +19,12 @@ export const unsplashService = {
     query: string,
     page = 1,
   ): Promise<UnsplashPhoto | null> => {
-    if (!UNSPLASH_ACCESS_KEY) {
+    if (!unsplashAccessKey) {
       console.error(`${LOG_PREFIX} missing access key`);
       throw new Error("Photo service is not configured.");
     }
 
-    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&page=${page}&orientation=landscape&client_id=${UNSPLASH_ACCESS_KEY}`;
+    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&page=${page}&orientation=landscape&client_id=${unsplashAccessKey}`;
 
     console.log(`${LOG_PREFIX} request`, { query, page });
 

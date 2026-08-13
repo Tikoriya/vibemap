@@ -1,4 +1,4 @@
-# VibeMap
+# Tukka
 
 > Your personal map of places worth remembering.
 
@@ -11,7 +11,7 @@
 Supabase free tier pauses after 7 days of inactivity.
 
 1. Go to [supabase.com/dashboard](https://supabase.com/dashboard)
-2. Open the **VibeMap** project
+2. Open the **Tukka** project
 3. Click **Restore project** — takes ~2 minutes
 4. Confirm tables are visible: `cities`, `spots`, `tags`, `spot_tags`
 
@@ -49,17 +49,37 @@ Then press `i` for iOS simulator or `a` for Android emulator.
 
 ### 4. Log in
 
-On the login screen, tap **DEV — Quick login** (only visible in dev mode) to sign in instantly with the test account.
+On the login screen, tap **DEV — Quick login** (only visible in dev mode) to sign in
+instantly with the test account set via `EXPO_PUBLIC_DEV_EMAIL` / `EXPO_PUBLIC_DEV_PASSWORD`
+in `.env`. Everyone else uses the magic link.
 
-### API Keys (already in source)
+### API Keys
 
-All keys are hardcoded directly in the source for now — no `.env` setup required:
+Copy `.env.example` to `.env` and fill in the four values:
 
-| Key                       | File                       |
-| ------------------------- | -------------------------- |
-| Supabase URL + public key | `utils/supabase.ts`        |
-| Unsplash Access Key       | `lib/services/unsplash.ts` |
-| Google Places API Key     | `lib/services/google.ts`   |
+```bash
+cp .env.example .env
+```
+
+| Variable                               | Where to get it                                        |
+| -------------------------------------- | ------------------------------------------------------ |
+| `EXPO_PUBLIC_SUPABASE_URL`             | Supabase → Project Settings → API                       |
+| `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → API                       |
+| `EXPO_PUBLIC_GOOGLE_PLACES_API_KEY`    | Google Cloud Console → Credentials (restrict to Places) |
+| `EXPO_PUBLIC_UNSPLASH_ACCESS_KEY`      | unsplash.com/developers → your app → Access Key         |
+
+They are read once in `lib/env.ts`. Supabase is required and the app refuses to
+start without it; the Google and Unsplash keys are optional and only disable
+place search and city photo suggestions when missing.
+
+`EXPO_PUBLIC_` variables are inlined into the bundle at build time, so treat
+them as public and rely on provider-side restrictions — RLS on every Supabase
+table, and app + API restrictions on the Google key. Server-side secrets belong
+in Supabase Edge Function secrets, never here.
+
+For EAS builds the same four variables are configured as environment variables
+on the `preview` and `production` build profiles, so CI does not need a local
+`.env`.
 
 ---
 
@@ -89,12 +109,12 @@ npx expo run:ios            # build + install on the iOS Simulator (no Apple acc
 1. One-time signing setup — open the native project and pick a Team:
 
 ```bash
-open ios/vibemap.xcworkspace
+open ios/Tukka.xcworkspace
 ```
 
-   In Xcode → **vibemap** target → **Signing & Capabilities** → check **Automatically
-   manage signing** → set **Team** to your Apple ID. (Free personal team works; the build
-   expires after 7 days.)
+In Xcode → **Tukka** target → **Signing & Capabilities** → check **Automatically
+manage signing** → set **Team** to your Apple ID. (Free personal team works; the build
+expires after 7 days.)
 
 2. Build to the device:
 
@@ -107,7 +127,7 @@ npx expo run:ios --device
 - `run:ios` defaults to a plugged-in iPhone if one is connected — that path needs the
   signing Team above. Unplug it (or use the Simulator) to skip signing.
 - **Apple & Google sign-in are removed for now.** `@react-native-google-signin/google-signin`
-  broke `pod install`, and `expo-apple-authentication` adds the *Sign In with Apple*
+  broke `pod install`, and `expo-apple-authentication` adds the _Sign In with Apple_
   entitlement, which a **free** Apple account can't sign (it needs the paid Developer
   Program). Reinstall those packages and re-wire the login screen when you enroll in the
   paid program and actually use Apple/Google login.
@@ -115,9 +135,9 @@ npx expo run:ios --device
 
 ---
 
-## What is VibeMap?
+## What is Tukka?
 
-VibeMap is a mobile app for saving the places that matter to you — not just the address, but the feeling. Bars with great cocktails. Coffee shops where you can actually work. Restaurants worth the hype. Hidden gems you stumbled onto. Any spot you want to remember and find again.
+Tukka is a mobile app for saving the places that matter to you — not just the address, but the feeling. Bars with great cocktails. Coffee shops where you can actually work. Restaurants worth the hype. Hidden gems you stumbled onto. Any spot you want to remember and find again.
 
 It is built for people who travel often, live across cities, or simply want a more personal and expressive way to keep track of places than a generic Google Maps list. The difference is the vibe layer: every place you save can have custom tags that describe not just what it is, but why it is worth going back to.
 
@@ -129,7 +149,7 @@ Google Maps saved places exist, but they are flat. A list of pins with no way to
 
 Instagram and TikTok constantly surface great place recommendations via ads and posts, but there is no easy way to save them into a personal list without losing the context. A screenshot is not a plan.
 
-VibeMap solves both: a beautiful, organized personal database of places, tagged by vibe, filterable on a map, and quick to add to — including directly from social media with one tap.
+Tukka solves both: a beautiful, organized personal database of places, tagged by vibe, filterable on a map, and quick to add to — including directly from social media with one tap.
 
 ---
 
@@ -165,37 +185,38 @@ Tags describe the vibe of a spot. There are predefined categories (Cocktails, Co
 
 - [x] Sign in with Apple
 - [x] Sign in with Google
-- [x] Magic link via email (no password required)
-- [x] Persistent session — users stay logged in until they log out or delete the app
+- [✅] Magic link via email (no password required)
+- [✅] Persistent session — users stay logged in until they log out or delete the app
 
 **Cities** ✅
 
-- [x] Create a city with a name, country, and cover photo
-- [x] Cover photo auto-suggested from Unsplash when a city name is typed; user can replace with their own photo
-- [x] City list displayed as a 2-column image card grid
-- [x] Edit and delete cities
+- [✅] Create a city with a name, country, and cover photo
+- [✅] Cover photo auto-suggested from Unsplash when a city name is typed; user can replace with their own photo
+- [✅] City list displayed as a 2-column image card grid
+- [1/2] Edit and delete cities
 
 **Spots** ✅
 
 - [x] Create a spot using Google Places autocomplete — selecting a result auto-fills name, address, latitude/longitude
-- [x] Import a spot by pasting any link (Google Maps, restaurant website, Instagram) — form pre-fills automatically via the `parse-link` Edge Function
-- [x] Add a cover photo (from camera roll or camera)
-- [x] Add personal notes
-- [x] Add tags from a predefined list or create custom ones
-- [x] View spots as a scrollable list inside a city
-- [x] Edit and delete spots
-- [x] Spot detail screen with image, address, tags, notes, website, phone, and an "Open in Maps" button
+- [✅] Import a spot by pasting any link (Google Maps, restaurant website, Instagram) — form pre-fills automatically via the `parse-link` Edge Function
+- [✅] Add a cover photo (from camera roll or camera)
+- [✅] Add personal notes
+- [✅] Add tags from a predefined list or create custom ones
+- [✅] View spots as a scrollable list inside a city
+- [✅] Edit and delete spots
+- [✅] Spot detail screen with image, address, tags, notes, website, phone, and an "Open in Maps" button
+- [x] Share screenshot spot natively
+- [x] Add a spot by user's location with "Find me" option
 
 **Tags** ✅
 
-- [x] Predefined tag library: Cocktails, Coffee, Work-friendly, Fancy, Casual, Brunch, Nightlife, Nature, and more
-- [x] Custom tag creation
-- [x] Tags are color-coded by vibe category
-- [x] Filter spots in a city by one or more tags
+- [✅] Predefined tag library: Cocktails, Coffee, Work-friendly, Fancy, Casual, Brunch, Nightlife, Nature, and more
+- [✅] Custom tag creation
+- [✅] Filter spots in a city by one or more tags
 
 **Profile** ✅
 
-- [x] Account screen with name, avatar (pulled from OAuth provider), and logout
+- [✅] Account screen with name, avatar (pulled from OAuth provider), and logout
 
 ---
 
@@ -233,7 +254,7 @@ Tags describe the vibe of a spot. There are predefined categories (Cocktails, Co
 
 **Import from Instagram, TikTok, or any app** (Phase 3b — not yet built)
 
-- iOS: share directly from Instagram/TikTok/Chrome using the native iOS Share Sheet — VibeMap appears as a destination (requires `expo-share-intent` + EAS dev build)
+- iOS: share directly from Instagram/TikTok/Chrome using the native iOS Share Sheet — Tukka appears as a destination (requires `expo-share-intent` + EAS dev build)
 - Android: same via Android Share Intent
 - The shared URL is processed automatically and opens a pre-filled Create Spot form
 
@@ -321,7 +342,7 @@ A warm-neutral base so food and travel photography sits naturally in the UI with
 
 ## Analytics
 
-VibeMap uses **PostHog** for product analytics and **Sentry** for crash and error reporting. Both are free at the scale of an indie app (PostHog: 1M events/month, Sentry: 5k errors/month).
+Tukka uses **PostHog** for product analytics and **Sentry** for crash and error reporting. Both are free at the scale of an indie app (PostHog: 1M events/month, Sentry: 5k errors/month).
 
 Analytics are instrumented from Phase 1 so user behaviour data is collected from the first real user. Key events tracked:
 
@@ -345,7 +366,14 @@ This is an indie side project. The goal is to build something genuinely useful f
 
 ## Development Notes
 
-- API keys and Supabase credentials must be stored in `.env` and EAS secrets — never committed to source
+- API keys and Supabase credentials are read from `.env` via `lib/env.ts` — never committed to source
 - EAS Build replaces Expo Go as the development build method (required for Share Extension native code)
 - Supabase free tier: 500MB database, 1GB storage, 50,000 monthly active users — sufficient for MVP and early growth
 - Google Places API: $200/month free credit — sufficient for personal and small-scale use
+
+---
+
+## License
+
+Copyright © 2026 Viktoriya Lazarova. All rights reserved — see [LICENSE](LICENSE).
+Published for review, not for reuse.

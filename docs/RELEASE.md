@@ -64,9 +64,7 @@ At the repo root:
   "submit": {
     "production": {
       "ios": {
-        "appleId": "YOUR_APPLE_ID_EMAIL",
-        "ascAppId": "APP_STORE_CONNECT_APP_ID",
-        "appleTeamId": "YOUR_TEAM_ID"
+        "ascAppId": "APP_STORE_CONNECT_APP_ID"
       },
       "android": {
         "serviceAccountKeyPath": "./play-service-account.json",
@@ -78,6 +76,11 @@ At the repo root:
 ```
 
 `eas.json` must exist before `eas build:version:set` — since EAS CLI 12+ the command writes `appVersionSource` into that file and errors out if it's missing.
+
+The Apple ID and Team ID are deliberately not in `eas.json`, which is committed. EAS
+prompts for them on first run, or you can set `EXPO_APPLE_ID` in your shell to skip
+the prompt. `ascAppId` stays because it is the public App Store number and keeping it
+lets EAS skip the app-creation step.
 
 ### 1.4 Configure remote versioning
 
@@ -232,6 +235,61 @@ eas update --branch production --message "fix login bug"
 ```
 
 Testers get the new JS bundle the next time they open the app — no reinstall, no email.
+
+---
+
+## Phase 5 — Skipping Beta App Review (iOS)
+
+Beta App Review can drag on for 24h+ on the first submission, and occasionally on subsequent ones (new permissions, marketing version bumps, significant "What to Test" changes). Two options let you get a build on a device **today**, no review required.
+
+### Option A — Internal TestFlight (fastest)
+
+Internal testers **skip Beta App Review entirely** — the build is available as soon as it finishes processing (~10 min after `eas submit`).
+
+Trade-off: each tester must be added as a user in your App Store Connect team. Cap: 100 internal testers.
+
+1. App Store Connect → **Users and Access** → **+** → invite the tester's Apple ID email.
+2. Role: **App Manager** or **Developer**. Assign them to the Tukka app.
+3. Tester accepts the invite email → signs in to App Store Connect once.
+4. App Store Connect → your app → **TestFlight** → **Internal Testing** → **+** → create a group (e.g. "Core Team") → add the tester → add the build.
+5. Tester gets a TestFlight invite immediately and installs like any other TestFlight build.
+
+Best for: yourself on a second device, cofounder, a handful of close testers who don't mind being on the ASC team.
+
+### Option B — Ad-hoc `preview` build (no ASC access needed)
+
+Produces a signed `.ipa` that installs directly on **registered devices only** (up to 100 unique iOS devices per membership year). No TestFlight, no Apple review, no ASC user.
+
+Trade-off: you need each tester's **device UDID** upfront, registered through EAS.
+
+1. Register each tester's device:
+
+   ```bash
+   eas device:create
+   ```
+
+   EAS prints a registration URL + QR code. The tester opens it in Safari on their iPhone, taps **Register**, and reboots. One link can register many devices.
+
+2. Build with the `preview` profile (already defined in `eas.json`):
+
+   ```bash
+   npm run build:ios     # eas build --platform ios --profile preview
+   ```
+
+3. When the build finishes, EAS shows an **install URL** and QR code on the build page. Send the URL to your testers — they open it in Safari on the registered device and tap **Install**.
+
+Best for: a non-technical tester who can scan a QR code but shouldn't be on your App Store Connect team.
+
+### When to use which
+
+| Situation                                            | Use                              |
+| ---------------------------------------------------- | -------------------------------- |
+| You need to test on your own second device right now | Internal TestFlight              |
+| A cofounder or close teammate needs the build today  | Internal TestFlight              |
+| A friend / early user without an Apple dev account   | Ad-hoc `preview` build           |
+| Wider beta group (>20 people, no device registration) | External TestFlight (Phase 2.3) |
+
+Android has no equivalent problem — Play Internal Testing has no review. `npm run submit:android` puts the build in testers' Play Store within minutes.
 
 ---
 

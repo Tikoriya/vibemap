@@ -17,9 +17,7 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "viki.lazzarova@yahoo.com",
-        "ascAppId": "6792484108",
-        "appleTeamId": "S59W6YWN99"
+        "ascAppId": "6792484108"
       },
       "android": {
         "serviceAccountKeyPath": "./play-service-account.json",

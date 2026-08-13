@@ -44,9 +44,24 @@ export default function AuthScreen() {
   };
 
   const handleDevLogin = async () => {
+    // Reading the credentials inside this __DEV__ branch keeps them out of
+    // release bundles: Expo inlines EXPO_PUBLIC_* values wherever they appear,
+    // and this whole block is stripped when __DEV__ is false.
+    if (!__DEV__) return;
+
+    const devEmail = process.env.EXPO_PUBLIC_DEV_EMAIL;
+    const devPassword = process.env.EXPO_PUBLIC_DEV_PASSWORD;
+    if (!devEmail || !devPassword) {
+      Alert.alert(
+        "Dev login not configured",
+        "Set EXPO_PUBLIC_DEV_EMAIL and EXPO_PUBLIC_DEV_PASSWORD in .env.",
+      );
+      return;
+    }
+
     try {
       setIsLoading(true);
-      await authApi.signInWithPassword("vlazzarova@yahoo.bg", "Viki1234");
+      await authApi.signInWithPassword(devEmail, devPassword);
       router.replace("/(tabs)/cities");
     } catch (error) {
       console.error(error);

@@ -33,10 +33,16 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
 
 app-example
 play-service-account.json
+
+# tooling scratch state
+.cursor/debug.log
+supabase/.temp/
